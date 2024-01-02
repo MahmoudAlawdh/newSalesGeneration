@@ -1,0 +1,3 @@
+- fill gaps in dates in the database,
+  - get Reference_Full_ids set, for sales with less than 75000 Reference_id
+  - loop through this list, query sales, find gaps and fill them with empty sales
