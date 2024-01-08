@@ -102,20 +102,26 @@ def generate_all_sales_records():
     )
     records = []
     count = 0
-    for i in gm_sales_find.find({"Level_1_Area": "Kuwait"}):
+    for i in gm_sales_find("Kuwait"):
         reference_full_id = f'{i.get("Reference_Sheet")} {i["Reference_ID"]}'
         if reference_full_id in reference_ids_set:
             continue
+        closing_year = i.get("Store_Closing_Year", 2023)
+        closing_month = i.get("Store_Closing_Month", 12)
+        closing_day = i.get("Store_Closing_Day", 1)
+        opening_year = i.get("Store_Opening_Year", 2016)
+        opening_month = i.get("Store_Opening_Month", 1)
+        opening_day = i.get("Store_Opening_Day", 1)
         sales_periods = get_list_of_sales_period(
             __datetime(
-                int(i.get("Store_Opening_Year", 2016)),
-                int(i.get("Store_Opening_Month", 1)),
-                int(i.get("Store_Opening_Day", 1)),
+                int(opening_year if opening_year != 0 else 2016),
+                int(opening_month if opening_month != 0 else 1),
+                int(opening_day if opening_day != 0 else 1),
             ),
             __datetime(
-                int(i.get("Store_Closing_Year", 2023)),
-                int(i.get("Store_Closing_Month", 12)),
-                int(i.get("Store_Closing_Day", 1)),
+                int(closing_year if closing_year != 0 else 2023),
+                int(closing_month if closing_month != 0 else 12),
+                int(closing_day if closing_day != 0 else 1),
             ),
         )
         # for sales
@@ -127,6 +133,9 @@ def generate_all_sales_records():
             print(f"Writing {len(records)}")
             new_sales_insert(records)
             records = []
+    if records:
+        new_sales_insert(records)
+        records = []
     print(f"Done Generating {count} sales Records")
 
 
@@ -184,9 +193,7 @@ def __closing_date(i):
 
 def fill_sales_gaps():
     print("Filling sales gaps")
-    primary_id, reference_ids_set = get_sales_primary_id_and_reference_ids_set(
-        "Kuwait"
-    )
+    primary_id, reference_ids_set = get_sales_primary_id_and_reference_ids_set("Kuwait")
     records = []
     count = 0
     for i in reference_ids_set:

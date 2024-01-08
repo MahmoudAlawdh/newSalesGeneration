@@ -2,9 +2,7 @@ from db.helpers import gm_sales_collection as __gm_sales_collection
 from db.helpers import new_sales_collection as __new_sales_collection
 
 
-def gm_sales_find(country: str | None = None):
-    if country is None:
-        return __new_sales_collection.find()
+def gm_sales_find(country: str = "Kuwait"):
     return __gm_sales_collection.find({"Level_1_Area": country})
 
 
@@ -77,6 +75,7 @@ def new_sales_refenrece_ids_with_sales_count():
         [
             {
                 "$match": {
+                    "Source": {"$ne": "Algorithm"},
                     "Level_1_Area": "Kuwait",
                     "$and": [
                         {"Monthly_Sales": {"$ne": None}},
@@ -86,7 +85,83 @@ def new_sales_refenrece_ids_with_sales_count():
                 }
             },
             {"$group": {"_id": "$Reference_Full_ID", "fieldN": {"$sum": 1}}},
-            {"$match": {"fieldN": {"$gte": 12}}},
+            {"$match": {"fieldN": {"$gte": 3}}},
             {"$sort": {"fieldN": -1}},
         ]
+    )
+
+
+def new_sales_update_single_record(
+    reference_full_id,
+    year,
+    month,
+    location_type,
+    industry,
+    product_focus,
+    area,
+    weekday_store_sales,
+    weekday_delivery_sales,
+    weekend_store_sales,
+    weekend_delivery_sales,
+):
+    if (
+        weekday_delivery_sales <= 0
+        and weekday_store_sales <= 0
+        and weekend_delivery_sales <= 0
+        and weekend_store_sales <= 0
+    ):
+        return None
+    weekday_total_sales = weekday_delivery_sales + weekday_store_sales
+    weekend_total_sales = weekend_delivery_sales + weekend_store_sales
+    monthly_store_sales = weekday_store_sales * 20 + weekend_store_sales * 8
+    monthly_delivery_sales = weekday_delivery_sales * 20 + weekend_delivery_sales * 8
+    monthly_sales = monthly_store_sales + monthly_delivery_sales
+    delivery = monthly_delivery_sales / monthly_sales
+    if (
+        weekday_total_sales < 0
+        or weekend_total_sales < 0
+        or monthly_delivery_sales < 0
+        or monthly_sales <= 0
+        or delivery < 0
+    ):
+        return None
+    value = None
+
+    return __new_sales_collection.update_one(
+        {
+            "Source": "Generated",
+            "Study": "Generated",
+            "Researcher": "Mahmoud",
+            "Reference_Full_ID": reference_full_id,
+            "Sales_Month": month,
+            "Sales_Year": year,
+            "Location_Type": location_type,
+            "Industry_Level_2": industry,
+            "Product_Focus": product_focus,
+            "Level_3_Area": area,
+            "Weekday_Store_Sales": value,
+            "Weekday_Delivery_Sales": value,
+            "Weekend_Store_Sales": value,
+            "Weekend_Delivery_Sales": value,
+            "Weekday_Total_Sales": value,
+            "Weekend_Total_Sales": value,
+            "Monthly_Store_Sales": value,
+            "Monthly_Delivery_Sales": value,
+            "Monthly_Sales": value,
+            "Delivery_%": value,
+        },
+        {
+            "$set": {
+                "Weekday_Store_Sales": weekday_store_sales,
+                "Weekday_Delivery_Sales": weekday_delivery_sales,
+                "Weekend_Store_Sales": weekend_store_sales,
+                "Weekend_Delivery_Sales": weekend_delivery_sales,
+                "Weekday_Total_Sales": weekday_total_sales,
+                "Weekend_Total_Sales": weekend_total_sales,
+                "Monthly_Store_Sales": monthly_store_sales,
+                "Monthly_Delivery_Sales": monthly_delivery_sales,
+                "Monthly_Sales": monthly_sales,
+                "Delivery_%": delivery,
+            }
+        },
     )
