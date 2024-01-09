@@ -1,53 +1,18 @@
 import warnings
 
-import numpy as np
 import pandas as pd
-from prophet import Prophet
-from prophet.plot import plot_components_plotly, plot_plotly
+from ducks import Dex
 
 from db.helpers import new_sales_collection
-from db.queries import (
-    new_sales_average_sale,
-    new_sales_refenrece_ids_with_sales_count,
-    new_sales_update_single_record,
-)
-from helpers.Sales import (
-    clear_db,
-    copy_sales,
-    fill_sales_gaps,
-    generate_all_sales_records,
-    get_sales_primary_id_and_reference_ids_set,
-)
+from db.queries import new_sales_update_single_record
+from interpolate import fill_gaps
+from setup import setup_sales
 
 warnings.filterwarnings("ignore")
-area_df = pd.read_excel("./seasonalities.xlsx", "area")
-industry_df = pd.read_excel("./seasonalities.xlsx", "industry")
-location_type_df = pd.read_excel("./seasonalities.xlsx", "location_type")
-product_focus_df = pd.read_excel("./seasonalities.xlsx", "product_focus")
-
-
-def prophet_forecast_model(df: pd.DataFrame, key):
-    tmp = df[[key, "Sales_Period"]].copy()
-    tmp = tmp.set_index("Sales_Period")
-    tmp = tmp.reset_index()[["Sales_Period", key]].rename(
-        columns={"Sales_Period": "ds", key: "y"}
-    )
-    model = Prophet()
-
-    return model.fit(tmp)
-
-
-def get_prediction(model: Prophet, number_of_months):
-    future_dates = model.make_future_dataframe(periods=number_of_months, freq="M")
-    predictions = model.predict(future_dates)
-    return predictions
-
-
-def setup_sales():
-    # clear_db()
-    # copy_sales()
-    # fill_sales_gaps()
-    generate_all_sales_records()
+# area_df = pd.read_excel("./seasonalities.xlsx", "area")
+# industry_df = pd.read_excel("./seasonalities.xlsx", "industry")
+# location_type_df = pd.read_excel("./seasonalities.xlsx", "location_type")
+# product_focus_df = pd.read_excel("./seasonalities.xlsx", "product_focus")
 
 
 def filter_df(df: pd.DataFrame, year, month, key: str, value: str):
@@ -66,78 +31,57 @@ def get_single_seasonality(df: list[pd.DataFrame], key):
     return tmp / count
 
 
-def get_seasonalities(year, month, location_type, industry, product_focus, area):
-    location_seasonality = filter_df(
-        location_type_df, year, month, "location_type", location_type
-    )
-    industry_seasonality = filter_df(industry_df, year, month, "industry", industry)
-    product_seasonality = filter_df(
-        product_focus_df, year, month, "product_focus", product_focus
-    )
-    area_seasonality = filter_df(area_df, year, month, "area", area)
-    Weekday_Store_Sales = get_single_seasonality(
-        [
-            location_seasonality,
-            industry_seasonality,
-            product_seasonality,
-            area_seasonality,
-        ],
-        "Weekday_Store_Sales",
-    )
-    Weekday_Delivery_Sales = get_single_seasonality(
-        [
-            location_seasonality,
-            industry_seasonality,
-            product_seasonality,
-            area_seasonality,
-        ],
-        "Weekday_Delivery_Sales",
-    )
-    Weekend_Store_Sales = get_single_seasonality(
-        [
-            location_seasonality,
-            industry_seasonality,
-            product_seasonality,
-            area_seasonality,
-        ],
-        "Weekend_Store_Sales",
-    )
-    Weekend_Delivery_Sales = get_single_seasonality(
-        [
-            location_seasonality,
-            industry_seasonality,
-            product_seasonality,
-            area_seasonality,
-        ],
-        "Weekend_Store_Sales",
-    )
-    return (
-        Weekday_Store_Sales,
-        Weekday_Delivery_Sales,
-        Weekend_Store_Sales,
-        Weekend_Delivery_Sales,
-    )
-
-
-def derived_fields(df: pd.DataFrame) -> pd.DataFrame:
-    for j in [
-        "Weekend_Delivery_Sales",
-        "Weekend_Store_Sales",
-        "Weekday_Delivery_Sales",
-        "Weekday_Store_Sales",
-    ]:
-        df[j] = df[j].fillna(0)
-    df["Weekday_Total_Sales"] = df["Weekday_Delivery_Sales"] + df["Weekday_Store_Sales"]
-    df["Weekend_Total_Sales"] = df["Weekend_Delivery_Sales"] + df["Weekend_Store_Sales"]
-    df["Monthly_Store_Sales"] = (
-        df["Weekday_Store_Sales"] * 20 + df["Weekend_Store_Sales"] * 8
-    )
-    df["Monthly_Delivery_Sales"] = (
-        df["Weekday_Delivery_Sales"] * 20 + df["Weekend_Delivery_Sales"] * 8
-    )
-    df["Monthly_Sales"] = df["Monthly_Store_Sales"] + df["Monthly_Delivery_Sales"]
-    df["Delivery_%"] = df["Monthly_Delivery_Sales"] / df["Monthly_Sales"]
-    return df
+# def get_seasonalities(year, month, location_type, industry, product_focus, area):
+#     location_seasonality = filter_df(
+#         location_type_df, year, month, "location_type", location_type
+#     )
+#     industry_seasonality = filter_df(industry_df, year, month, "industry", industry)
+#     product_seasonality = filter_df(
+#         product_focus_df, year, month, "product_focus", product_focus
+#     )
+#     area_seasonality = filter_df(area_df, year, month, "area", area)
+#     Weekday_Store_Sales = get_single_seasonality(
+#         [
+#             location_seasonality,
+#             industry_seasonality,
+#             product_seasonality,
+#             area_seasonality,
+#         ],
+#         "Weekday_Store_Sales",
+#     )
+#     Weekday_Delivery_Sales = get_single_seasonality(
+#         [
+#             location_seasonality,
+#             industry_seasonality,
+#             product_seasonality,
+#             area_seasonality,
+#         ],
+#         "Weekday_Delivery_Sales",
+#     )
+#     Weekend_Store_Sales = get_single_seasonality(
+#         [
+#             location_seasonality,
+#             industry_seasonality,
+#             product_seasonality,
+#             area_seasonality,
+#         ],
+#         "Weekend_Store_Sales",
+#     )
+#     Weekend_Delivery_Sales = get_single_seasonality(
+#         [
+#             location_seasonality,
+#             industry_seasonality,
+#             product_seasonality,
+#             area_seasonality,
+#         ],
+#         "Weekend_Store_Sales",
+#     )
+#     return (
+#         Weekday_Store_Sales,
+#         Weekday_Delivery_Sales,
+#         Weekend_Store_Sales,
+#         Weekend_Delivery_Sales,
+#     )
 
 
 def forward_fill(records: list[dict]):
@@ -178,33 +122,33 @@ def forward_fill(records: list[dict]):
         industry = i["Industry_Level_2"]
         product_focus = i["Product_Focus"]
         area = i["Level_3_Area"]
-        (
-            Weekday_Store_Sales_Seasonality,
-            Weekday_Delivery_Sales_Seasonality,
-            Weekend_Store_Sales_Seasonality,
-            Weekend_Delivery_Sales_Seasonality,
-        ) = get_seasonalities(year, month, location_type, industry, product_focus, area)
+        # (
+        #     Weekday_Store_Sales_Seasonality,
+        #     Weekday_Delivery_Sales_Seasonality,
+        #     Weekend_Store_Sales_Seasonality,
+        #     Weekend_Delivery_Sales_Seasonality,
+        # ) = get_seasonalities(year, month, location_type, industry, product_focus, area)
 
-        if Weekday_Store_Sales_Seasonality != None:
-            i["Weekday_Store_Sales"] = (
-                weekday_store_sales
-                + weekday_store_sales * Weekday_Store_Sales_Seasonality
-            )
-        if Weekday_Delivery_Sales_Seasonality != None:
-            i["Weekday_Delivery_Sales"] = (
-                weekday_delivery_sales
-                + weekday_delivery_sales * Weekday_Delivery_Sales_Seasonality
-            )
-        if Weekend_Store_Sales_Seasonality != None:
-            i["Weekend_Store_Sales"] = (
-                weekend_store_sales
-                + weekend_store_sales * Weekend_Store_Sales_Seasonality
-            )
-        if Weekend_Delivery_Sales_Seasonality != None:
-            i["Weekend_Delivery_Sales"] = (
-                weekend_delivery_sales
-                + weekend_delivery_sales * Weekend_Delivery_Sales_Seasonality
-            )
+        # if Weekday_Store_Sales_Seasonality != None:
+        #     i["Weekday_Store_Sales"] = (
+        #         weekday_store_sales
+        #         + weekday_store_sales * Weekday_Store_Sales_Seasonality
+        #     )
+        # if Weekday_Delivery_Sales_Seasonality != None:
+        #     i["Weekday_Delivery_Sales"] = (
+        #         weekday_delivery_sales
+        #         + weekday_delivery_sales * Weekday_Delivery_Sales_Seasonality
+        #     )
+        # if Weekend_Store_Sales_Seasonality != None:
+        #     i["Weekend_Store_Sales"] = (
+        #         weekend_store_sales
+        #         + weekend_store_sales * Weekend_Store_Sales_Seasonality
+        #     )
+        # if Weekend_Delivery_Sales_Seasonality != None:
+        #     i["Weekend_Delivery_Sales"] = (
+        #         weekend_delivery_sales
+        #         + weekend_delivery_sales * Weekend_Delivery_Sales_Seasonality
+        #     )
         weekday_store_sales = i["Weekday_Store_Sales"]
         weekday_delivery_sales = i["Weekday_Delivery_Sales"]
         weekend_store_sales = i["Weekend_Store_Sales"]
@@ -234,183 +178,145 @@ def forward_fill(records: list[dict]):
     )
 
 
-def forecast(df: pd.DataFrame, key):
-    if len(df[df[key].notna()]) == 0:
-        return pd.DataFrame()
-
-    try:
-        m = prophet_forecast_model(df, key)
-        forcast = get_prediction(m, 12)
-    except:
-        return pd.DataFrame()
-    return forcast
+def step_1():
+    setup_sales()
 
 
-def backwordfill(records: list[dict]):
-    df = pd.DataFrame(records)
-    df = df.to_dict(orient="records")
-    i = list(reversed(df))[0]
-    weekday_store_sales = i["Weekday_Store_Sales"]
-    weekday_delivery_sales = i["Weekday_Delivery_Sales"]
-    weekend_store_sales = i["Weekend_Store_Sales"]
-    weekend_delivery_sales = i["Weekend_Delivery_Sales"]
-    for i in reversed(df):
-        if i["Weekday_Store_Sales"]:
-            weekday_store_sales = i["Weekday_Store_Sales"]
-            weekday_delivery_sales = i["Weekday_Delivery_Sales"]
-            weekend_store_sales = i["Weekend_Store_Sales"]
-            weekend_delivery_sales = i["Weekend_Delivery_Sales"]
-            continue
+def step_2():
+    fill_gaps()
 
-        location_type = i["Location_Type"]
-        industry = i["Industry_Level_2"]
-        product_focus = i["Product_Focus"]
-        area = i["Level_3_Area"]
-        year = i["Sales_Year"]
-        month = i["Sales_Month"]
-        (
-            Weekday_Store_Sales_Seasonality,
-            Weekday_Delivery_Sales_Seasonality,
-            Weekend_Store_Sales_Seasonality,
-            Weekend_Delivery_Sales_Seasonality,
-        ) = get_seasonalities(year, month, location_type, industry, product_focus, area)
 
-        if Weekday_Store_Sales_Seasonality != None:
-            weekday_store_sales = weekday_store_sales + weekday_store_sales * (
-                Weekday_Store_Sales_Seasonality * -1
+def step_3_method_1():
+    def query(key: str):
+        averages = list(
+            new_sales_collection.aggregate(
+                [
+                    {
+                        "$match": {
+                            "Level_1_Area": "Kuwait",
+                            "Monthly_Sales": {"$nin": [0, None]},
+                            "Location_Type": {"$ne": 0},
+                        }
+                    },
+                    {
+                        "$group": {
+                            "_id": {
+                                "Brand": "$Brand",
+                                "Location_Type": "$Location_Type",
+                                key: f"${key}",
+                                "Sales_Year": "$Sales_Year",
+                                "Sales_Month": "$Sales_Month",
+                            },
+                            "Weekday_Store_Sales": {"$avg": "$Weekday_Store_Sales"},
+                            "Weekday_Delivery_Sales": {
+                                "$avg": "$Weekday_Delivery_Sales"
+                            },
+                            "Weekend_Store_Sales": {"$avg": "$Weekend_Store_Sales"},
+                            "Weekend_Delivery_Sales": {
+                                "$avg": "$Weekend_Delivery_Sales"
+                            },
+                        }
+                    },
+                    {
+                        "$match": {
+                            "Weekday_Store_Sales": {"$ne": None},
+                        }
+                    },
+                    {
+                        "$project": {
+                            "_id": False,
+                            "Brand": "$_id.Brand",
+                            "Location_Type": "$_id.Location_Type",
+                            key: f"$_id.{key}",
+                            "Sales_Year": "$_id.Sales_Year",
+                            "Sales_Month": "$_id.Sales_Month",
+                            "Weekday_Store_Sales": True,
+                            "Weekday_Delivery_Sales": True,
+                            "Weekend_Store_Sales": True,
+                            "Weekend_Delivery_Sales": True,
+                        }
+                    },
+                ]
             )
-        if Weekday_Delivery_Sales_Seasonality != None:
-            weekday_delivery_sales = weekday_delivery_sales + weekday_delivery_sales * (
-                Weekday_Delivery_Sales_Seasonality * -1
-            )
-        if Weekend_Store_Sales_Seasonality != None:
-            weekend_store_sales = weekend_store_sales + weekend_store_sales * (
-                Weekend_Store_Sales_Seasonality * -1
-            )
-        if Weekend_Delivery_Sales_Seasonality != None:
-            weekend_delivery_sales = weekend_delivery_sales + weekend_delivery_sales * (
-                Weekend_Delivery_Sales_Seasonality
-            )
-        print(
-            weekday_store_sales,
-            weekday_delivery_sales,
-            weekend_store_sales,
-            weekend_delivery_sales,
         )
-        # new_sales_update_single_record(
-        #     i["Reference_Full_ID"],
-        #     year,
-        #     month,
-        #     location_type,
-        #     industry,
-        #     product_focus,
-        #     area,
-        #     weekday_store_sales,
-        #     weekday_delivery_sales,
-        #     weekend_store_sales,
-        #     weekend_delivery_sales,
-        # )
-
-
-# def get_data_from_forecast(forcast, year, month):
-#     v = forcast[forcast["ds"].dt.strftime("%Y-%-m") == f"{year}-{month}"]["yhat"]
-#     return v.values[0]
-
-
-def find_seg(data: list[dict]):
-    start_date = data[0]["Sales_Period"]
-    end_date = data[-1]["Sales_Period"]
-    for i in data:
-        monthly_sales = i["Monthly_Sales"]
-        if type(monthly_sales) == int or type(monthly_sales) == float:
-            start_date = i["Sales_Period"]
-            break
-    for i in reversed(data):
-        monthly_sales = i["Monthly_Sales"]
-        if type(monthly_sales) == int or type(monthly_sales) == float:
-            end_date = i["Sales_Period"]
-            break
-    num_months = (end_date.year - start_date.year) * 12 + (
-        end_date.month - start_date.month
-    )
-
-    result = [
-        record for record in data if start_date <= record["Sales_Period"] <= end_date
-    ]
-    empty_months = 0
-    for i in result:
-        if i["Monthly_Sales"] == None:
-            empty_months += 1
-    if empty_months == 0:
-        return None
-    if num_months - empty_months > 6:
-        return None
-    return result
-
-
-def fill_gaps():
-    keys = [
-        "Weekday_Store_Sales",
-        "Weekday_Delivery_Sales",
-        "Weekend_Store_Sales",
-        "Weekend_Delivery_Sales",
-    ]
-    ids = list(new_sales_refenrece_ids_with_sales_count())
-    count = 0
-    for i in ids:
-        sales = list(
-            new_sales_collection.find(
-                {
-                    "Reference_Full_ID": i["_id"],
-                }
-            ).sort("Sales_Period")
+        dex = Dex(
+            averages,
+            [
+                "Brand",
+                "Location_Type",
+                key,
+                "Sales_Year",
+                "Sales_Month",
+            ],
         )
-        sales = find_seg(sales)
-        if not sales:
-            continue
-        #
-        for i in sales:
-            if i["Monthly_Sales"] == None:
-                count += 1
-        #
-        df = pd.DataFrame(sales)
-        for j in keys:
-            print(i["Reference_Full_ID"], j)
-            df[j] = df[j].interpolate()
-        df = derived_fields(df)
-        df = df.to_dict(orient="records")
-        for i in df:
-            weekday_store_sales = i["Weekday_Store_Sales"]
-            weekday_delivery_sales = i["Weekday_Delivery_Sales"]
-            weekend_store_sales = i["Weekend_Store_Sales"]
-            weekend_delivery_sales = i["Weekend_Delivery_Sales"]
+        return dex
+
+    def fill(dex: Dex, key: str):
+        count = 0
+        for i in new_sales_collection.find(
+            {
+                "Monthly_Sales": None,
+                "Level_1_Area": "Kuwait",
+                "Location_Type": {"$ne": 0},
+            }
+        ):
+            year = i["Sales_Year"]
+            month = i["Sales_Month"]
             location_type = i["Location_Type"]
             industry = i["Industry_Level_2"]
             product_focus = i["Product_Focus"]
             area = i["Level_3_Area"]
-            year = i["Sales_Year"]
-            month = i["Sales_Month"]
-            new_sales_update_single_record(
-                i["Reference_Full_ID"],
-                year,
-                month,
-                location_type,
-                industry,
-                product_focus,
-                area,
-                weekday_store_sales,
-                weekday_delivery_sales,
-                weekend_store_sales,
-                weekend_delivery_sales,
-            )
+            found_averages = dex[
+                {
+                    "Brand": "Nike",
+                    "Sales_Year": year,
+                    "Sales_Month": month,
+                    key: i[key],
+                    "Location_Type": location_type,
+                }
+            ]
+            data = [i for i in found_averages if i["Weekday_Store_Sales"] != None]
+            if len(data) != 0:
+                count += 1
+                tmp = data[0]
+                weekday_store_sales = tmp["Weekday_Store_Sales"]
+                weekday_delivery_sales = tmp["Weekday_Delivery_Sales"]
+                weekend_store_sales = tmp["Weekend_Store_Sales"]
+                weekend_delivery_sales = tmp["Weekend_Delivery_Sales"]
+
+                new_sales_update_single_record(
+                    i["Reference_Full_ID"],
+                    year,
+                    month,
+                    location_type,
+                    industry,
+                    product_focus,
+                    area,
+                    weekday_store_sales,
+                    weekday_delivery_sales,
+                    weekend_store_sales,
+                    weekend_delivery_sales,
+                )
+        print(count)
+
+    key = "Level_3_Area"
+    dex = query(key)
+    fill(dex, key)
+    key = "Level_2_Area"
+    dex = query(key)
+    fill(dex, key)
 
 
 if __name__ == "__main__":
     """
     Loop through all the ids, find all close sales, with the same industry and location type with x distance
     """
-    # setup_sales()
-    fill_gaps()
+    # step_1()
+    step_2()
+
+    """ step_3() """
+    # step_3_method_1()
+
     # reference_ids = list(
     #     new_sales_collection.distinct(
     #         "Reference_Full_ID",

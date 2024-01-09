@@ -1,13 +1,15 @@
 from datetime import datetime as __datetime
 
+import pandas as __pd
+
+from db.queries import gm_sales_find as __gm_sales_find
+from db.queries import new_sales_delete as __new_sales_delete
+from db.queries import new_sales_find as __new_sales_find
 from db.queries import (
-    gm_sales_find,
-    new_sales_delete,
-    new_sales_find,
-    new_sales_find_by_country_and_reference_full_id,
-    new_sales_find_primary_id,
-    new_sales_insert,
+    new_sales_find_by_country_and_reference_full_id as __new_sales_find_by_country_and_reference_full_id,
 )
+from db.queries import new_sales_find_primary_id as __new_sales_find_primary_id
+from db.queries import new_sales_insert as __new_sales_insert
 from helpers.dates import get_last_day_of_the_month, get_list_of_sales_period
 
 
@@ -15,9 +17,9 @@ def get_sales_primary_id_and_reference_ids_set(country: str | None = None):
     print("Getting Sales Primary ID and Reference IDs Set")
     primary_id: int = 0
     reference_ids_set = set()
-    cursor = new_sales_find(country)
+    cursor = __new_sales_find(country)
 
-    for i in new_sales_find_primary_id():
+    for i in __new_sales_find_primary_id():
         primary_id = int(i["Primary_ID"])
 
     for i in cursor:
@@ -30,17 +32,17 @@ def get_sales_primary_id_and_reference_ids_set(country: str | None = None):
 def copy_sales():
     print("Copying Sales")
     records = []
-    for i in gm_sales_find():
+    for i in __gm_sales_find():
         records.append(
             {**i, "Sales_Period": get_last_day_of_the_month(i["Sales_Period"])}
         )
-    new_sales_insert(records)
+    __new_sales_insert(records)
     print("Done Copying Sales")
 
 
 def clear_db():
     print("Clearing old Data")
-    new_sales_delete()
+    __new_sales_delete()
     print("Done Clearing")
 
 
@@ -102,7 +104,7 @@ def generate_all_sales_records():
     )
     records = []
     count = 0
-    for i in gm_sales_find("Kuwait"):
+    for i in __gm_sales_find("Kuwait"):
         reference_full_id = f'{i.get("Reference_Sheet")} {i["Reference_ID"]}'
         if reference_full_id in reference_ids_set:
             continue
@@ -131,10 +133,10 @@ def generate_all_sales_records():
         if len(records) > 1_000_000:
             count += len(records)
             print(f"Writing {len(records)}")
-            new_sales_insert(records)
+            __new_sales_insert(records)
             records = []
     if records:
-        new_sales_insert(records)
+        __new_sales_insert(records)
         records = []
     print(f"Done Generating {count} sales Records")
 
@@ -197,7 +199,7 @@ def fill_sales_gaps():
     records = []
     count = 0
     for i in reference_ids_set:
-        tmp_sales = list(new_sales_find_by_country_and_reference_full_id("Kuwait", i))
+        tmp_sales = list(__new_sales_find_by_country_and_reference_full_id("Kuwait", i))
         sample_sales = tmp_sales[0]
         start_date = __opening_date(sample_sales)
         end_date = __closing_date(sample_sales)
@@ -214,9 +216,30 @@ def fill_sales_gaps():
             if len(records) > 1_000_000:
                 count += len(records)
                 print(f"Writing {len(records)}")
-                new_sales_insert(records)
+                __new_sales_insert(records)
                 records = []
     if len(records) > 0:
         count += len(records)
-        new_sales_insert(records)
+        __new_sales_insert(records)
     print(f"Done Filling {count} sales gaps")
+
+
+def derived_fields(df: __pd.DataFrame) -> __pd.DataFrame:
+    for j in [
+        "Weekend_Delivery_Sales",
+        "Weekend_Store_Sales",
+        "Weekday_Delivery_Sales",
+        "Weekday_Store_Sales",
+    ]:
+        df[j] = df[j].fillna(0)
+    df["Weekday_Total_Sales"] = df["Weekday_Delivery_Sales"] + df["Weekday_Store_Sales"]
+    df["Weekend_Total_Sales"] = df["Weekend_Delivery_Sales"] + df["Weekend_Store_Sales"]
+    df["Monthly_Store_Sales"] = (
+        df["Weekday_Store_Sales"] * 20 + df["Weekend_Store_Sales"] * 8
+    )
+    df["Monthly_Delivery_Sales"] = (
+        df["Weekday_Delivery_Sales"] * 20 + df["Weekend_Delivery_Sales"] * 8
+    )
+    df["Monthly_Sales"] = df["Monthly_Store_Sales"] + df["Monthly_Delivery_Sales"]
+    df["Delivery_%"] = df["Monthly_Delivery_Sales"] / df["Monthly_Sales"]
+    return df
