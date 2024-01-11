@@ -1,6 +1,6 @@
 in this method i generated the month to month seasonality for weekday/weekend store/delivery sales
 
-- in the last file i send there was an issue with seasonality
+- in the last file i sent there was an issue with seasonality
   am generating the following seasonalities:
 - location_type
 - industry

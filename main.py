@@ -1,10 +1,12 @@
 import warnings
+from typing import Optional
 
 import pandas as pd
 from ducks import Dex
 
 from db.helpers import new_sales_collection
 from db.queries import new_sales_update_single_record
+from fill_with_averages import fill_sales_with_averages
 from interpolate import fill_gaps
 from setup import setup_sales
 
@@ -187,124 +189,9 @@ def step_2():
 
 
 def step_3_method_1():
-    def query(key: str):
-        averages = list(
-            new_sales_collection.aggregate(
-                [
-                    {
-                        "$match": {
-                            "Level_1_Area": "Kuwait",
-                            "Monthly_Sales": {"$nin": [0, None]},
-                            "Location_Type": {"$ne": 0},
-                        }
-                    },
-                    {
-                        "$group": {
-                            "_id": {
-                                "Brand": "$Brand",
-                                "Location_Type": "$Location_Type",
-                                key: f"${key}",
-                                "Sales_Year": "$Sales_Year",
-                                "Sales_Month": "$Sales_Month",
-                            },
-                            "Weekday_Store_Sales": {"$avg": "$Weekday_Store_Sales"},
-                            "Weekday_Delivery_Sales": {
-                                "$avg": "$Weekday_Delivery_Sales"
-                            },
-                            "Weekend_Store_Sales": {"$avg": "$Weekend_Store_Sales"},
-                            "Weekend_Delivery_Sales": {
-                                "$avg": "$Weekend_Delivery_Sales"
-                            },
-                        }
-                    },
-                    {
-                        "$match": {
-                            "Weekday_Store_Sales": {"$ne": None},
-                        }
-                    },
-                    {
-                        "$project": {
-                            "_id": False,
-                            "Brand": "$_id.Brand",
-                            "Location_Type": "$_id.Location_Type",
-                            key: f"$_id.{key}",
-                            "Sales_Year": "$_id.Sales_Year",
-                            "Sales_Month": "$_id.Sales_Month",
-                            "Weekday_Store_Sales": True,
-                            "Weekday_Delivery_Sales": True,
-                            "Weekend_Store_Sales": True,
-                            "Weekend_Delivery_Sales": True,
-                        }
-                    },
-                ]
-            )
-        )
-        dex = Dex(
-            averages,
-            [
-                "Brand",
-                "Location_Type",
-                key,
-                "Sales_Year",
-                "Sales_Month",
-            ],
-        )
-        return dex
-
-    def fill(dex: Dex, key: str):
-        count = 0
-        for i in new_sales_collection.find(
-            {
-                "Monthly_Sales": None,
-                "Level_1_Area": "Kuwait",
-                "Location_Type": {"$ne": 0},
-            }
-        ):
-            year = i["Sales_Year"]
-            month = i["Sales_Month"]
-            location_type = i["Location_Type"]
-            industry = i["Industry_Level_2"]
-            product_focus = i["Product_Focus"]
-            area = i["Level_3_Area"]
-            found_averages = dex[
-                {
-                    "Brand": "Nike",
-                    "Sales_Year": year,
-                    "Sales_Month": month,
-                    key: i[key],
-                    "Location_Type": location_type,
-                }
-            ]
-            data = [i for i in found_averages if i["Weekday_Store_Sales"] != None]
-            if len(data) != 0:
-                count += 1
-                tmp = data[0]
-                weekday_store_sales = tmp["Weekday_Store_Sales"]
-                weekday_delivery_sales = tmp["Weekday_Delivery_Sales"]
-                weekend_store_sales = tmp["Weekend_Store_Sales"]
-                weekend_delivery_sales = tmp["Weekend_Delivery_Sales"]
-
-                new_sales_update_single_record(
-                    i["Reference_Full_ID"],
-                    year,
-                    month,
-                    location_type,
-                    industry,
-                    product_focus,
-                    area,
-                    weekday_store_sales,
-                    weekday_delivery_sales,
-                    weekend_store_sales,
-                    weekend_delivery_sales,
-                )
-        print(count)
-
-    key = "Level_3_Area"
-    dex = query(key)
-    fill(dex, key)
-    key = "Level_2_Area"
-    dex = query(key)
-    fill(dex, key)
+    fill_sales_with_averages("Level_3_Area")
+    fill_sales_with_averages("Level_2_Area")
+    # fill_sales_with_averages(None)
 
 
 if __name__ == "__main__":
@@ -315,7 +202,7 @@ if __name__ == "__main__":
     step_2()
 
     """ step_3() """
-    # step_3_method_1()
+    step_3_method_1()
 
     # reference_ids = list(
     #     new_sales_collection.distinct(

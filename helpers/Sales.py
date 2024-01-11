@@ -211,8 +211,7 @@ def fill_sales_gaps():
         )
         for j in sales_periods:
             primary_id += 1
-            for j in sales_periods:
-                records.append(__generate_record(primary_id, sample_sales, j))
+            records.append(__generate_record(primary_id, sample_sales, j))
             if len(records) > 1_000_000:
                 count += len(records)
                 print(f"Writing {len(records)}")

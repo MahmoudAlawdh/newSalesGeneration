@@ -15,20 +15,15 @@ def __find_seg(data: list[dict], seg_len: int):
     for i in data:
         if i["Monthly_Sales"] == None and len(seg) > 0:
             seg.append(i)
-        if i["Monthly_Sales"] != None and len(seg) == 0:
-            seg.append(i)
 
-        if i["Monthly_Sales"] != None and len(seg) > 0:
-            if len(seg) == 1:
-                seg.append(i)
-            else:
-                if len(seg) > seg_len:
+        if i["Monthly_Sales"] != None:
+            seg.append(i)
+            if len(seg) > seg_len:
+                if seg[0]["Monthly_Sales"] != None and seg[-1]["Monthly_Sales"] != None:
+                    yield seg
                     seg = []
-                    seg.append(i)
-                    continue
-                seg.append(i)
-                yield seg
-                seg = []
+                else:
+                    seg = [i]
 
 
 def fill_gaps():
@@ -48,7 +43,7 @@ def fill_gaps():
                 }
             ).sort("Sales_Period")
         )
-        sales = __find_seg(sales, 6)
+        sales = __find_seg(sales, 3)
         if not sales:
             continue
         #
@@ -61,8 +56,7 @@ def fill_gaps():
             df = __pd.DataFrame(j)
             try:
                 for j in keys:
-                    print(i["Reference_Full_ID"], j)
-                    df[j] = df[j].interpolate()
+                    df[j] = df[j].interpolate(limit_area="inside")
                 df = __derived_fields(df)
                 df = df.to_dict(orient="records")
                 print(i["Reference_Full_ID"], count)

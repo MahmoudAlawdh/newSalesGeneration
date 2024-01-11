@@ -3,7 +3,9 @@ from db.helpers import new_sales_collection as __new_sales_collection
 
 
 def gm_sales_find(country: str = "Kuwait"):
-    return __gm_sales_collection.find({"Level_1_Area": country})
+    return __gm_sales_collection.find(
+        {"Level_1_Area": country, "Source": {"$ne": "Algorithm"}}
+    )
 
 
 def new_sales_find_primary_id():

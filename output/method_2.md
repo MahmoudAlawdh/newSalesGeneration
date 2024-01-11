@@ -13,3 +13,7 @@ get available averages for outlet sales based on:
   apply step_1 until there is no gaps
 
 by this point i got 110930 records, 393819 records to go
+
+show areas, above map area filters
+
+user wants income level of area
