@@ -33,8 +33,13 @@ def copy_sales():
     print("Copying Sales")
     records = []
     for i in __gm_sales_find():
+        location_type = i["Location_Type"]
         records.append(
-            {**i, "Sales_Period": get_last_day_of_the_month(i["Sales_Period"])}
+            {
+                **i,
+                "Sales_Period": get_last_day_of_the_month(i["Sales_Period"]),
+                "Location_Type": location_type if location_type != 0 else None,
+            }
         )
     __new_sales_insert(records)
     print("Done Copying Sales")

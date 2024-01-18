@@ -16,7 +16,6 @@ def __get_pipeline(key: __Optional[str]):
                 "$match": {
                     "Level_1_Area": "Kuwait",
                     "Monthly_Sales": {"$nin": [0, None]},
-                    "Location_Type": {"$ne": 0},
                 }
             },
             {
@@ -60,7 +59,6 @@ def __get_pipeline(key: __Optional[str]):
                 "$match": {
                     "Level_1_Area": "Kuwait",
                     "Monthly_Sales": {"$nin": [0, None]},
-                    "Location_Type": {"$ne": 0},
                 }
             },
             {
@@ -129,7 +127,6 @@ def __fill(dex: __Dex, key: __Optional[str]):
         {
             "Monthly_Sales": None,
             "Level_1_Area": "Kuwait",
-            "Location_Type": {"$ne": 0},
         }
     ):
         year = i["Sales_Year"]

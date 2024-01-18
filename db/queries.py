@@ -40,7 +40,6 @@ def new_sales_average_sale():
             {
                 "$match": {
                     "Monthly_Sales": {"$ne": None},
-                    "Location_Type": {"$ne": 0},
                     "Industry_Level_2": {"$ne": 0},
                     "Sales_Year": {"$gte": 2016},
                 }

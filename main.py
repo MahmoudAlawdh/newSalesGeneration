@@ -188,21 +188,29 @@ def step_2():
     fill_gaps()
 
 
-def step_3_method_1():
+def step_3_method():
+    """skippable"""
     fill_sales_with_averages("Level_3_Area")
     fill_sales_with_averages("Level_2_Area")
-    # fill_sales_with_averages(None)
+    step_2()
+
+
+def step_4():
+    """
+    fill rest of the gaps
+    get
+    """
 
 
 if __name__ == "__main__":
     """
     Loop through all the ids, find all close sales, with the same industry and location type with x distance
     """
-    # step_1()
+    step_1()
     step_2()
 
     """ step_3() """
-    step_3_method_1()
+    step_3_method()
 
     # reference_ids = list(
     #     new_sales_collection.distinct(
