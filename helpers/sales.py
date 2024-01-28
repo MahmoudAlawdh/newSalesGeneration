@@ -229,21 +229,30 @@ def fill_sales_gaps():
 
 
 def derived_fields(df: __pd.DataFrame) -> __pd.DataFrame:
-    for j in [
-        "Weekend_Delivery_Sales",
-        "Weekend_Store_Sales",
-        "Weekday_Delivery_Sales",
-        "Weekday_Store_Sales",
-    ]:
-        df[j] = df[j].fillna(0)
-    df["Weekday_Total_Sales"] = df["Weekday_Delivery_Sales"] + df["Weekday_Store_Sales"]
-    df["Weekend_Total_Sales"] = df["Weekend_Delivery_Sales"] + df["Weekend_Store_Sales"]
+    df = df[
+        df["Weekday_Delivery_Sales"].notna()
+        | df["Weekday_Store_Sales"].notna()
+        | df["Weekend_Delivery_Sales"].notna()
+        | df["Weekend_Store_Sales"].notna()
+    ]
+
+    df["Weekday_Total_Sales"] = df["Weekday_Delivery_Sales"].fillna(0) + df[
+        "Weekday_Store_Sales"
+    ].fillna(0)
+    df["Weekend_Total_Sales"] = df["Weekend_Delivery_Sales"].fillna(0) + df[
+        "Weekend_Store_Sales"
+    ].fillna(0)
+
     df["Monthly_Store_Sales"] = (
-        df["Weekday_Store_Sales"] * 20 + df["Weekend_Store_Sales"] * 8
+        df["Weekday_Store_Sales"].fillna(0) * 20
+        + df["Weekend_Store_Sales"].fillna(0) * 8
     )
     df["Monthly_Delivery_Sales"] = (
-        df["Weekday_Delivery_Sales"] * 20 + df["Weekend_Delivery_Sales"] * 8
+        df["Weekday_Delivery_Sales"].fillna(0) * 20
+        + df["Weekend_Delivery_Sales"].fillna(0) * 8
     )
+
     df["Monthly_Sales"] = df["Monthly_Store_Sales"] + df["Monthly_Delivery_Sales"]
+
     df["Delivery_%"] = df["Monthly_Delivery_Sales"] / df["Monthly_Sales"]
     return df

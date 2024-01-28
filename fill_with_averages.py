@@ -180,7 +180,6 @@ def __fill(dex: __Dex, key: __Optional[str]):
                 )
             except:
                 pass
-    print(count)
 
 
 def fill_sales_with_averages(

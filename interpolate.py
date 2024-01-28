@@ -7,7 +7,7 @@ from db.queries import (
 from db.queries import (
     new_sales_update_single_record as __new_sales_update_single_record,
 )
-from helpers.Sales import derived_fields as __derived_fields
+from helpers.sales import derived_fields as __derived_fields
 
 
 def __find_seg(data: list[dict], seg_len: int):
