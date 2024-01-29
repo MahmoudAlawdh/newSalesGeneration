@@ -110,6 +110,7 @@ def forward_fill():
         on=["Product_Focus", "Sales_Year", "Sales_Month"],
         suffixes=("", "_product_focus"),
     )
+
     df["weekday_store_sales_seasonality"] = (
         df.loc[:, "Weekday_Store_Sales_area"]
         + df.loc[:, "Weekday_Store_Sales_industry"]

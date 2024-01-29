@@ -34,7 +34,7 @@ def step_4():
     fill rest of the gaps
     """
     forward_fill()
-    step_3()
+    # step_3()
 
 
 if __name__ == "__main__":
@@ -42,9 +42,9 @@ if __name__ == "__main__":
     Loop through all the ids, find all close sales, with the same industry and location type with x distance
     """
     # step_1()
-    # step_2()
-    # step_3()
-    step_4()
+    step_2()
+    step_3()
+    # step_4()
 
     # reference_ids = list(
     #     new_sales_collection.distinct(

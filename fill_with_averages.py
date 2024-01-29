@@ -15,7 +15,20 @@ def __get_pipeline(key: __Optional[str]):
             {
                 "$match": {
                     "Level_1_Area": "Kuwait",
-                    "Monthly_Sales": {"$nin": [0, None]},
+                    "$or": [
+                        {
+                            "Weekday_Store_Sales": {"$ne": None},
+                        },
+                        {
+                            "Weekend_Store_Sales": {"$ne": None},
+                        },
+                        {
+                            "Weekday_Delivery_Sales": {"$ne": None},
+                        },
+                        {
+                            "Weekend_Delivery_Sales": {"$ne": None},
+                        },
+                    ],
                 }
             },
             {
@@ -31,11 +44,6 @@ def __get_pipeline(key: __Optional[str]):
                     "Weekday_Delivery_Sales": {"$avg": "$Weekday_Delivery_Sales"},
                     "Weekend_Store_Sales": {"$avg": "$Weekend_Store_Sales"},
                     "Weekend_Delivery_Sales": {"$avg": "$Weekend_Delivery_Sales"},
-                }
-            },
-            {
-                "$match": {
-                    "Weekday_Store_Sales": {"$ne": None},
                 }
             },
             {
@@ -58,7 +66,20 @@ def __get_pipeline(key: __Optional[str]):
             {
                 "$match": {
                     "Level_1_Area": "Kuwait",
-                    "Monthly_Sales": {"$nin": [0, None]},
+                    "$or": [
+                        {
+                            "Weekday_Store_Sales": {"$ne": None},
+                        },
+                        {
+                            "Weekend_Store_Sales": {"$ne": None},
+                        },
+                        {
+                            "Weekday_Delivery_Sales": {"$ne": None},
+                        },
+                        {
+                            "Weekend_Delivery_Sales": {"$ne": None},
+                        },
+                    ],
                 }
             },
             {
@@ -73,11 +94,6 @@ def __get_pipeline(key: __Optional[str]):
                     "Weekday_Delivery_Sales": {"$avg": "$Weekday_Delivery_Sales"},
                     "Weekend_Store_Sales": {"$avg": "$Weekend_Store_Sales"},
                     "Weekend_Delivery_Sales": {"$avg": "$Weekend_Delivery_Sales"},
-                }
-            },
-            {
-                "$match": {
-                    "Weekday_Store_Sales": {"$ne": None},
                 }
             },
             {
@@ -180,6 +196,7 @@ def __fill(dex: __Dex, key: __Optional[str]):
                 )
             except:
                 pass
+    print(count)
 
 
 def fill_sales_with_averages(

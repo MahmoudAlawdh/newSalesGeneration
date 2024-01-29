@@ -12,14 +12,33 @@ from helpers.sales import derived_fields as __derived_fields
 
 def __find_seg(data: list[dict], seg_len: int):
     seg = []
+
+    def check_values_is_None(record: dict):
+        return (
+            record.get("Weekday_Delivery_Sales", None) == None
+            or record.get("Weekday_Store_Sales") == None
+            or record.get("Weekend_Delivery_Sales", None) == None
+            or record.get("Weekend_Store_Sales", None) == None
+        )
+
+    def check_values_not_None(record: dict):
+        return (
+            record.get("Weekday_Delivery_Sales", None) != None
+            or record.get("Weekday_Store_Sales") != None
+            or record.get("Weekend_Delivery_Sales", None) != None
+            or record.get("Weekend_Store_Sales", None) != None
+        )
+
     for i in data:
-        if i["Monthly_Sales"] == None and len(seg) > 0:
+        is_none = check_values_is_None(i)
+        not_none = check_values_not_None(i)
+        if is_none and len(seg) > 0:
             seg.append(i)
 
-        if i["Monthly_Sales"] != None:
+        if not_none:
             seg.append(i)
             if len(seg) > seg_len:
-                if seg[0]["Monthly_Sales"] != None and seg[-1]["Monthly_Sales"] != None:
+                if check_values_is_None(seg[0]) and check_values_not_None(seg[-1]):
                     yield seg
                     seg = []
                 else:
@@ -43,28 +62,31 @@ def fill_gaps():
                 }
             ).sort("Sales_Period")
         )
-        sales = __find_seg(sales, 3)
+        sales = list(__find_seg(sales, 3))
         if not sales:
             continue
-        #
+        print(len(sales))
         for j in sales:
             for i in j:
-                if i["Monthly_Sales"] == None:
+                if (
+                    i.get("Weekday_Delivery_Sales") == None
+                    or i.get("Weekday_Store_Sales", None) == None
+                    or i.get("Weekend_Delivery_Sales", None) == None
+                    or i.get("Weekend_Store_Sales", None) == None
+                ):
                     count += 1
-            if count == 0:
-                continue
             df = __pd.DataFrame(j)
-            try:
-                for j in keys:
-                    df[j] = df[j].interpolate(limit_area="inside")
-                df = __derived_fields(df)
-                df = df.to_dict(orient="records")
-                print(i["Reference_Full_ID"], count)
-                for i in df:
-                    weekday_store_sales = i["Weekday_Store_Sales"]
-                    weekday_delivery_sales = i["Weekday_Delivery_Sales"]
-                    weekend_store_sales = i["Weekend_Store_Sales"]
-                    weekend_delivery_sales = i["Weekend_Delivery_Sales"]
+            for j in keys:
+                if j not in df:
+                    continue
+                df[j] = df[j].interpolate(limit_area="inside")
+            df = df.to_dict(orient="records")
+            for i in df:
+                try:
+                    weekday_store_sales = i.get("Weekday_Store_Sales", None)
+                    weekday_delivery_sales = i.get("Weekday_Delivery_Sales", None)
+                    weekend_store_sales = i.get("Weekend_Store_Sales", None)
+                    weekend_delivery_sales = i.get("Weekend_Delivery_Sales", None)
                     location_type = i["Location_Type"]
                     industry = i["Industry_Level_2"]
                     product_focus = i["Product_Focus"]
@@ -84,5 +106,5 @@ def fill_gaps():
                         weekend_store_sales,
                         weekend_delivery_sales,
                     )
-            except:
-                print("Error")
+                except Exception as error:
+                    print("Error", error)

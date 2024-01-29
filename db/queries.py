@@ -100,24 +100,47 @@ def new_sales_update_single_record(
     industry,
     product_focus,
     area,
-    weekday_store_sales,
-    weekday_delivery_sales,
-    weekend_store_sales,
-    weekend_delivery_sales,
+    weekday_store_sales: None | float,
+    weekday_delivery_sales: None | float,
+    weekend_store_sales: None | float,
+    weekend_delivery_sales: None | float,
 ):
     if (
-        weekday_delivery_sales <= 0
-        and weekday_store_sales <= 0
-        and weekend_delivery_sales <= 0
-        and weekend_store_sales <= 0
+        weekday_delivery_sales == None
+        and weekday_store_sales == None
+        and weekend_store_sales == None
+        and weekend_delivery_sales == None
     ):
         return None
-    weekday_total_sales = weekday_delivery_sales + weekday_store_sales
-    weekend_total_sales = weekend_delivery_sales + weekend_store_sales
-    monthly_store_sales = weekday_store_sales * 20 + weekend_store_sales * 8
-    monthly_delivery_sales = weekday_delivery_sales * 20 + weekend_delivery_sales * 8
-    monthly_sales = monthly_store_sales + monthly_delivery_sales
-    delivery = monthly_delivery_sales / monthly_sales
+    if (
+        weekday_delivery_sales == 0
+        and weekday_store_sales == 0
+        and weekend_delivery_sales == 0
+        and weekend_store_sales == 0
+    ):
+        return None
+
+    def fix_none(value):
+        if value == None:
+            return 0
+        return value
+
+    weekday_total_sales = fix_none(weekday_delivery_sales) + fix_none(
+        weekday_store_sales
+    )
+    weekend_total_sales = fix_none(weekend_delivery_sales) + fix_none(
+        weekend_store_sales
+    )
+    monthly_store_sales = (
+        fix_none(weekday_store_sales) * 20 + fix_none(weekend_store_sales) * 8
+    )
+    monthly_delivery_sales = (
+        fix_none(weekday_delivery_sales) * 20 + fix_none(weekend_delivery_sales) * 8
+    )
+    monthly_sales = fix_none(monthly_store_sales) + fix_none(monthly_delivery_sales)
+    delivery = 0
+    if monthly_sales > 0:
+        delivery = monthly_delivery_sales / monthly_sales
     if (
         weekday_total_sales < 0
         or weekend_total_sales < 0
@@ -126,7 +149,6 @@ def new_sales_update_single_record(
         or delivery < 0
     ):
         return None
-    value = None
 
     return __new_sales_collection.update_one(
         {
@@ -140,16 +162,6 @@ def new_sales_update_single_record(
             "Industry_Level_2": industry,
             "Product_Focus": product_focus,
             "Level_3_Area": area,
-            "Weekday_Store_Sales": value,
-            "Weekday_Delivery_Sales": value,
-            "Weekend_Store_Sales": value,
-            "Weekend_Delivery_Sales": value,
-            "Weekday_Total_Sales": value,
-            "Weekend_Total_Sales": value,
-            "Monthly_Store_Sales": value,
-            "Monthly_Delivery_Sales": value,
-            "Monthly_Sales": value,
-            "Delivery_%": value,
         },
         {
             "$set": {
