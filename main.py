@@ -7,7 +7,7 @@ from ducks import Dex
 from db.helpers import new_sales_collection
 from db.queries import new_sales_update_single_record
 from fill_with_averages import fill_sales_with_averages
-from helpers.seasonality_helper import forward_fill
+from helpers.seasonality_helper import backword_fill, forward_fill
 from interpolate import fill_gaps
 from setup import setup_sales
 
@@ -19,13 +19,16 @@ def step_1():
 
 
 def step_2():
+    print("step 2")
     fill_gaps()
 
 
 def step_3():
     """skippable"""
+    print("step 3")
     fill_sales_with_averages("Level_3_Area")
     fill_sales_with_averages("Level_2_Area")
+    fill_sales_with_averages(None)
     step_2()
 
 
@@ -33,7 +36,8 @@ def step_4():
     """
     fill rest of the gaps
     """
-    forward_fill()
+    # forward_fill()
+    backword_fill()
     # step_3()
 
 

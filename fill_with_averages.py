@@ -194,7 +194,8 @@ def __fill(dex: __Dex, key: __Optional[str]):
                     weekend_store_sales,
                     weekend_delivery_sales,
                 )
-            except:
+            except Exception as e:
+                print(e)
                 pass
     print(count)
 

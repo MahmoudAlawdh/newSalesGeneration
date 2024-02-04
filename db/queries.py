@@ -1,3 +1,5 @@
+from pandas import isna
+
 from db.helpers import gm_sales_collection as __gm_sales_collection
 from db.helpers import new_sales_collection as __new_sales_collection
 
@@ -119,11 +121,20 @@ def new_sales_update_single_record(
         and weekend_store_sales == 0
     ):
         return None
+    if (
+        isna(weekday_delivery_sales)
+        and isna(weekday_store_sales)
+        and isna(weekend_delivery_sales)
+        and isna(weekend_store_sales)
+    ):
+        return None
 
     def fix_none(value):
-        if value == None:
+        if isna(value):
             return 0
-        return value
+        if type(value) == int or type(value) == float:
+            return value
+        return 0
 
     weekday_total_sales = fix_none(weekday_delivery_sales) + fix_none(
         weekday_store_sales
@@ -139,17 +150,16 @@ def new_sales_update_single_record(
     )
     monthly_sales = fix_none(monthly_store_sales) + fix_none(monthly_delivery_sales)
     delivery = 0
-    if monthly_sales > 0:
+    if monthly_sales > 0 and monthly_delivery_sales != None:
         delivery = monthly_delivery_sales / monthly_sales
     if (
         weekday_total_sales < 0
         or weekend_total_sales < 0
         or monthly_delivery_sales < 0
-        or monthly_sales <= 0
+        or monthly_sales < 0
         or delivery < 0
     ):
         return None
-
     return __new_sales_collection.update_one(
         {
             "Source": "Generated",

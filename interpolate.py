@@ -24,7 +24,7 @@ def __find_seg(data: list[dict], seg_len: int):
     def check_values_not_None(record: dict):
         return (
             record.get("Weekday_Delivery_Sales", None) != None
-            or record.get("Weekday_Store_Sales") != None
+            or record.get("Weekday_Store_Sales", None) != None
             or record.get("Weekend_Delivery_Sales", None) != None
             or record.get("Weekend_Store_Sales", None) != None
         )
@@ -38,7 +38,7 @@ def __find_seg(data: list[dict], seg_len: int):
         if not_none:
             seg.append(i)
             if len(seg) > seg_len:
-                if check_values_is_None(seg[0]) and check_values_not_None(seg[-1]):
+                if check_values_not_None(seg[0]) and check_values_not_None(seg[-1]):
                     yield seg
                     seg = []
                 else:
@@ -65,7 +65,6 @@ def fill_gaps():
         sales = list(__find_seg(sales, 3))
         if not sales:
             continue
-        print(len(sales))
         for j in sales:
             for i in j:
                 if (
