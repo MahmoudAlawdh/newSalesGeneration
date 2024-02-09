@@ -8,136 +8,86 @@ from db.queries import (
     new_sales_update_single_record as __new_sales_update_single_record,
 )
 
+Params = list[
+    __Literal[
+        "Location_Type",
+        "Level_2_Area",
+        "Level_3_Area",
+        "Brand",
+        "Product_Focus",
+        "Industry_Level_2",
+        "Sales_Year",
+        "Sales_Month",
+    ]
+]
 
-def __get_pipeline(key: __Optional[str]):
-    if key:
-        return [
-            {
-                "$match": {
-                    "Level_1_Area": "Kuwait",
-                    "$or": [
-                        {
-                            "Weekday_Store_Sales": {"$ne": None},
-                        },
-                        {
-                            "Weekend_Store_Sales": {"$ne": None},
-                        },
-                        {
-                            "Weekday_Delivery_Sales": {"$ne": None},
-                        },
-                        {
-                            "Weekend_Delivery_Sales": {"$ne": None},
-                        },
-                    ],
-                }
-            },
-            {
-                "$group": {
-                    "_id": {
-                        "Brand": "$Brand",
-                        "Location_Type": "$Location_Type",
-                        key: f"${key}",
-                        "Sales_Year": "$Sales_Year",
-                        "Sales_Month": "$Sales_Month",
+
+def __get_pipeline(key: Params):
+    dict_list = {}
+    dict_list_projection = {}
+    for i in key:
+        dict_list[i] = f"${i}"
+        dict_list_projection[i] = f"$_id.{i}"
+    return [
+        {
+            "$match": {
+                "Level_1_Area": "Kuwait",
+                "$or": [
+                    {
+                        "Weekday_Store_Sales": {"$ne": None},
                     },
-                    "Weekday_Store_Sales": {"$avg": "$Weekday_Store_Sales"},
-                    "Weekday_Delivery_Sales": {"$avg": "$Weekday_Delivery_Sales"},
-                    "Weekend_Store_Sales": {"$avg": "$Weekend_Store_Sales"},
-                    "Weekend_Delivery_Sales": {"$avg": "$Weekend_Delivery_Sales"},
-                }
-            },
-            {
-                "$project": {
-                    "_id": False,
-                    "Brand": "$_id.Brand",
-                    "Location_Type": "$_id.Location_Type",
-                    key: f"$_id.{key}",
-                    "Sales_Year": "$_id.Sales_Year",
-                    "Sales_Month": "$_id.Sales_Month",
-                    "Weekday_Store_Sales": True,
-                    "Weekday_Delivery_Sales": True,
-                    "Weekend_Store_Sales": True,
-                    "Weekend_Delivery_Sales": True,
-                }
-            },
-        ]
-    else:
-        return [
-            {
-                "$match": {
-                    "Level_1_Area": "Kuwait",
-                    "$or": [
-                        {
-                            "Weekday_Store_Sales": {"$ne": None},
-                        },
-                        {
-                            "Weekend_Store_Sales": {"$ne": None},
-                        },
-                        {
-                            "Weekday_Delivery_Sales": {"$ne": None},
-                        },
-                        {
-                            "Weekend_Delivery_Sales": {"$ne": None},
-                        },
-                    ],
-                }
-            },
-            {
-                "$group": {
-                    "_id": {
-                        "Brand": "$Brand",
-                        "Location_Type": "$Location_Type",
-                        "Sales_Year": "$Sales_Year",
-                        "Sales_Month": "$Sales_Month",
+                    {
+                        "Weekend_Store_Sales": {"$ne": None},
                     },
-                    "Weekday_Store_Sales": {"$avg": "$Weekday_Store_Sales"},
-                    "Weekday_Delivery_Sales": {"$avg": "$Weekday_Delivery_Sales"},
-                    "Weekend_Store_Sales": {"$avg": "$Weekend_Store_Sales"},
-                    "Weekend_Delivery_Sales": {"$avg": "$Weekend_Delivery_Sales"},
-                }
-            },
-            {
-                "$project": {
-                    "_id": False,
-                    "Brand": "$_id.Brand",
-                    "Location_Type": "$_id.Location_Type",
-                    "Sales_Year": "$_id.Sales_Year",
-                    "Sales_Month": "$_id.Sales_Month",
-                    "Weekday_Store_Sales": True,
-                    "Weekday_Delivery_Sales": True,
-                    "Weekend_Store_Sales": True,
-                    "Weekend_Delivery_Sales": True,
-                }
-            },
-        ]
+                    {
+                        "Weekday_Delivery_Sales": {"$ne": None},
+                    },
+                    {
+                        "Weekend_Delivery_Sales": {"$ne": None},
+                    },
+                ],
+            }
+        },
+        {
+            "$group": {
+                "_id": {
+                    **dict_list,
+                },
+                "Weekday_Store_Sales": {"$avg": "$Weekday_Store_Sales"},
+                "Weekday_Delivery_Sales": {"$avg": "$Weekday_Delivery_Sales"},
+                "Weekend_Store_Sales": {"$avg": "$Weekend_Store_Sales"},
+                "Weekend_Delivery_Sales": {"$avg": "$Weekend_Delivery_Sales"},
+            }
+        },
+        {
+            "$project": {
+                "_id": False,
+                **dict_list_projection,
+                "Weekday_Store_Sales": True,
+                "Weekday_Delivery_Sales": True,
+                "Weekend_Store_Sales": True,
+                "Weekend_Delivery_Sales": True,
+            }
+        },
+    ]
 
 
-def __query(key: __Optional[str]):
+def __query(key: Params):
     averages = list(__new_sales_collection.aggregate(__get_pipeline(key)))
-    if key:
-        return __Dex(
-            averages,
-            [
-                "Brand",
-                "Location_Type",
-                key,
-                "Sales_Year",
-                "Sales_Month",
-            ],
-        )
-    else:
-        return __Dex(
-            averages,
-            [
-                "Brand",
-                "Location_Type",
-                "Sales_Year",
-                "Sales_Month",
-            ],
-        )
+    return __Dex(
+        averages,
+        [
+            *key,
+            "Sales_Year",
+            "Sales_Month",
+        ],
+    )
 
 
-def __fill(dex: __Dex, key: __Optional[str]):
+def __fill(
+    dex: __Dex,
+    key: Params,
+):
     count = 0
     for i in __new_sales_collection.find(
         {
@@ -148,27 +98,16 @@ def __fill(dex: __Dex, key: __Optional[str]):
         year = i["Sales_Year"]
         month = i["Sales_Month"]
         location_type = i["Location_Type"]
-        brand = i["Brand"]
         found_averages = None
-        if key:
-            found_averages = dex[
-                {
-                    "Brand": brand,
-                    "Sales_Year": year,
-                    "Sales_Month": month,
-                    key: i[key],
-                    "Location_Type": location_type,
-                }
-            ]
-        else:
-            found_averages = dex[
-                {
-                    "Brand": brand,
-                    "Sales_Year": year,
-                    "Sales_Month": month,
-                    "Location_Type": location_type,
-                }
-            ]
+        dict_list = {}
+        for j in key:
+            dict_list[j] = i[j]
+        found_averages = dex[
+            {
+                **dict_list,
+            }
+        ]
+
         data = [i for i in found_averages if i["Weekday_Store_Sales"] != None]
         if len(data) != 0:
             count += 1
@@ -200,8 +139,6 @@ def __fill(dex: __Dex, key: __Optional[str]):
     print(count)
 
 
-def fill_sales_with_averages(
-    key: __Optional[__Literal["Level_3_Area", "Level_2_Area"]]
-):
+def fill_sales_with_averages(key: Params):
     dex = __query(key)
     __fill(dex, key)

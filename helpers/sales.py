@@ -34,11 +34,15 @@ def copy_sales():
     records = []
     for i in __gm_sales_find():
         location_type = i["Location_Type"]
+        industry_level_2 = i["Industry_Level_2"]
+        product_focus = i["Product_Focus"]
         records.append(
             {
                 **i,
                 "Sales_Period": get_last_day_of_the_month(i["Sales_Period"]),
                 "Location_Type": location_type if location_type != 0 else None,
+                "Industry_Level_2": industry_level_2 if industry_level_2 != 0 else None,
+                "Product_Focus": product_focus if product_focus != 0 else None,
             }
         )
     __new_sales_insert(records)
@@ -53,6 +57,7 @@ def clear_db():
 
 def __generate_record(primary_id: int, i, sales_period: __datetime):
     reference_full_id = f'{i.get("Reference_Sheet")} {i["Reference_ID"]}'
+    product_focus = i.get("Product_Focus")
     return {
         "Primary_ID": primary_id,
         "Primary_Sheet": "Sales",
@@ -62,7 +67,7 @@ def __generate_record(primary_id: int, i, sales_period: __datetime):
         "Reference_Full_ID": reference_full_id,
         "Company_Name": i.get("Company_Name"),
         "Industry_Level_2": i.get("Industry_Level_2"),
-        "Product_Focus": i.get("Product_Focus"),
+        "Product_Focus": product_focus if product_focus != 0 else None,
         "Brand": i.get("Brand"),
         "Location_Name": i.get("Location_Name"),
         "Location_Type": i.get("Location_Type"),

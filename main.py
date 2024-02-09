@@ -26,19 +26,63 @@ def step_2():
 def step_3():
     """skippable"""
     print("step 3")
-    fill_sales_with_averages("Level_3_Area")
-    fill_sales_with_averages("Level_2_Area")
-    fill_sales_with_averages(None)
+    #
+    fill_sales_with_averages(
+        [
+            "Level_3_Area",
+            "Location_Type",
+            "Brand",
+            "Sales_Year",
+            "Sales_Month",
+            "Product_Focus",
+            "Industry_Level_2",
+        ]
+    )
     step_2()
+    fill_sales_with_averages(
+        [
+            "Level_2_Area",
+            "Location_Type",
+            "Brand",
+            "Sales_Year",
+            "Sales_Month",
+            "Product_Focus",
+            "Industry_Level_2",
+        ]
+    )
+    step_2()
+    # #
+    fill_sales_with_averages(
+        [
+            "Level_3_Area",
+            "Location_Type",
+            "Industry_Level_2",
+            "Product_Focus",
+            "Sales_Year",
+            "Sales_Month",
+        ]
+    )
+    step_2()
+    fill_sales_with_averages(
+        [
+            "Level_2_Area",
+            "Location_Type",
+            "Industry_Level_2",
+            "Product_Focus",
+            "Sales_Year",
+            "Sales_Month",
+        ]
+    )
 
 
 def step_4():
     """
     fill rest of the gaps
     """
-    # forward_fill()
+    forward_fill()
+    step_3()
     backword_fill()
-    # step_3()
+    step_3()
 
 
 if __name__ == "__main__":
@@ -48,94 +92,4 @@ if __name__ == "__main__":
     # step_1()
     step_2()
     step_3()
-    # step_4()
-
-    # reference_ids = list(
-    #     new_sales_collection.distinct(
-    #         "Reference_Full_ID",
-    #         {
-    #             "Source": {"$ne": "Generated"},
-    #             "Monthly_Sales": {"$ne": None},
-    #             "Sales_Year": {"$gte": 2016},
-    #             "Level_1_Area": "Kuwait",
-    #         },
-    #     )
-    # )
-    # reference_ids_length = len(reference_ids)
-    # count = 0
-    # c = 0
-    # for i in reference_ids:
-    #     count += 1
-    #     print(count, reference_ids_length, c)
-    #     records = list(
-    #         new_sales_collection.find({"Reference_Full_ID": i}).sort("Sales_Period")
-    #     )
-    #     keys = [
-    #         "Weekend_Delivery_Sales",
-    #         "Weekday_Delivery_Sales",
-    #         "Weekend_Store_Sales",
-    #         "Weekday_Store_Sales",
-    #     ]
-    #     df = pd.DataFrame(records)
-    #     df = df.replace(0, np.nan)
-    #     r = df[df["Monthly_Sales"].isna()].to_dict(orient="records")
-    #     if len(df[df["Monthly_Sales"].notna()]) < 2 or len(r) == 0:
-    #         continue
-
-    #     weekday_store_forecast = forecast(df, "Weekday_Store_Sales")
-    #     weekday_delivery_forecast = forecast(df, "Weekday_Delivery_Sales")
-    #     weekend_store_forecast = forecast(df, "Weekend_Store_Sales")
-    #     weekend_delivery_forecast = forecast(df, "Weekend_Delivery_Sales")
-    #     for i in r:
-    #         print(i["Reference_Full_ID"], i["Monthly_Sales"], i["Sales_Period"])
-    #         location_type = i["Location_Type"]
-    #         industry = i["Industry_Level_2"]
-    #         product_focus = i["Product_Focus"]
-    #         area = i["Level_3_Area"]
-    #         year = i["Sales_Year"]
-    #         month = i["Sales_Month"]
-
-    #         weekday_store_sales = (
-    #             0
-    #             if weekday_store_forecast.empty
-    #             else get_data_from_forecast(weekday_store_forecast, year, month)
-    #         )
-    #         weekday_delivery_sales = (
-    #             0
-    #             if weekday_delivery_forecast.empty
-    #             else get_data_from_forecast(weekday_delivery_forecast, year, month)
-    #         )
-    #         weekend_store_sales = (
-    #             0
-    #             if weekend_store_forecast.empty
-    #             else get_data_from_forecast(weekend_store_forecast, year, month)
-    #         )
-    #         weekend_delivery_sales = (
-    #             0
-    #             if weekend_delivery_forecast.empty
-    #             else get_data_from_forecast(weekend_delivery_forecast, year, month)
-    #         )
-    #         result = new_sales_update_single_record(
-    #             i["Reference_Full_ID"],
-    #             year,
-    #             month,
-    #             location_type,
-    #             industry,
-    #             product_focus,
-    #             area,
-    #             weekday_store_sales,
-    #             weekday_delivery_sales,
-    #             weekend_store_sales,
-    #             weekend_delivery_sales,
-    #         )
-    #         if result:
-    #             print(result.matched_count)
-    #         else:
-    #             c += 1
-    #             print("No Match")
-    #             print(
-    #                 weekday_store_sales,
-    #                 weekday_delivery_sales,
-    #                 weekend_store_sales,
-    #                 weekend_delivery_sales,
-    #             )
+    step_4()

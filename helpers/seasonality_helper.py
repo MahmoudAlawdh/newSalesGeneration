@@ -125,30 +125,30 @@ def setup_seasonalities(
         on=["Product_Focus", "Sales_Year", "Sales_Month"],
         suffixes=("", "_product_focus"),
     )
-
     df["weekday_store_sales_seasonality"] = (
-        df.loc[:, "Weekday_Store_Sales_area"]
-        + df.loc[:, "Weekday_Store_Sales_industry"]
-        + df.loc[:, "Weekday_Store_Sales_product_focus"]
-        + df.loc[:, "Weekday_Store_Sales_location_type"]
+        df.loc[:, "Weekday_Store_Sales_area"].replace(np.nan, 0)
+        + df.loc[:, "Weekday_Store_Sales_industry"].replace(np.nan, 0)
+        + df.loc[:, "Weekday_Store_Sales_product_focus"].replace(np.nan, 0)
+        + df.loc[:, "Weekday_Store_Sales_location_type"].replace(np.nan, 0)
     ) / 4
+
     df["weekday_delivery_sales_seasonality"] = (
-        df.loc[:, "Weekday_Delivery_Sales_area"]
-        + df.loc[:, "Weekday_Delivery_Sales_industry"]
-        + df.loc[:, "Weekday_Delivery_Sales_product_focus"]
-        + df.loc[:, "Weekday_Delivery_Sales_location_type"]
+        df.loc[:, "Weekday_Delivery_Sales_area"].replace(np.nan, 0)
+        + df.loc[:, "Weekday_Delivery_Sales_industry"].replace(np.nan, 0)
+        + df.loc[:, "Weekday_Delivery_Sales_product_focus"].replace(np.nan, 0)
+        + df.loc[:, "Weekday_Delivery_Sales_location_type"].replace(np.nan, 0)
     ) / 4
     df["weekend_store_sales_seasonality"] = (
-        df.loc[:, "Weekend_Store_Sales_area"]
-        + df.loc[:, "Weekend_Store_Sales_industry"]
-        + df.loc[:, "Weekend_Store_Sales_product_focus"]
-        + df.loc[:, "Weekend_Store_Sales_location_type"]
+        df.loc[:, "Weekend_Store_Sales_area"].replace(np.nan, 0)
+        + df.loc[:, "Weekend_Store_Sales_industry"].replace(np.nan, 0)
+        + df.loc[:, "Weekend_Store_Sales_product_focus"].replace(np.nan, 0)
+        + df.loc[:, "Weekend_Store_Sales_location_type"].replace(np.nan, 0)
     ) / 4
     df["weekend_delivery_sales_seasonality"] = (
-        df.loc[:, "Weekend_Delivery_Sales_area"]
-        + df.loc[:, "Weekend_Delivery_Sales_industry"]
-        + df.loc[:, "Weekend_Delivery_Sales_product_focus"]
-        + df.loc[:, "Weekend_Delivery_Sales_location_type"]
+        df.loc[:, "Weekend_Delivery_Sales_area"].replace(np.nan, 0)
+        + df.loc[:, "Weekend_Delivery_Sales_industry"].replace(np.nan, 0)
+        + df.loc[:, "Weekend_Delivery_Sales_product_focus"].replace(np.nan, 0)
+        + df.loc[:, "Weekend_Delivery_Sales_location_type"].replace(np.nan, 0)
     ) / 4
     df.drop(
         [
@@ -175,6 +175,7 @@ def setup_seasonalities(
         axis=1,
         inplace=True,
     )
+    df = df.replace(0, np.nan)
     return df
 
 

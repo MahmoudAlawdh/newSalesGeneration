@@ -1,3 +1,3 @@
-- fill gaps in dates in the database,
-  - get Reference_Full_ids set, for sales with less than 75000 Reference_id
-  - loop through this list, query sales, find gaps and fill them with empty sales
+- for all sales, check the max generated and max actual, count them, to find anamolies
+- for all sales, check month to month change, if its more than 100% count them, to find anamolies
+- for all sales,check year to year sales, to check anamolies

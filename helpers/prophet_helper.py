@@ -9,7 +9,7 @@ def prophet_forecast_model(df: pd.DataFrame, key):
         columns={"Sales_Period": "ds", key: "y"}
     )
     model = Prophet(
-        yearly_seasonality=False,
+        # yearly_seasonality=False,
         seasonality_mode="multiplicative",
         # changepoint_prior_scale=30,
         # seasonality_prior_scale=30,
