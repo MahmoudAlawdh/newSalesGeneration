@@ -169,21 +169,6 @@ def new_sales_update_single_record(
         or delivery < 0
     ):
         return None
-    if reference_full_id == "Foodservice 139127":
-        print(
-            {
-                "Weekday_Store_Sales": weekday_store_sales,
-                "Weekday_Delivery_Sales": weekday_delivery_sales,
-                "Weekend_Store_Sales": weekend_store_sales,
-                "Weekend_Delivery_Sales": weekend_delivery_sales,
-                "Weekday_Total_Sales": weekday_total_sales,
-                "Weekend_Total_Sales": weekend_total_sales,
-                "Monthly_Store_Sales": monthly_store_sales,
-                "Monthly_Delivery_Sales": monthly_delivery_sales,
-                "Monthly_Sales": monthly_sales,
-                "Delivery_%": delivery,
-            }
-        )
     return __new_sales_collection.update_one(
         {
             "Source": "Generated",

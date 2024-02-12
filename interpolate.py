@@ -1,3 +1,4 @@
+import numpy as __np
 import pandas as __pd
 
 from db.helpers import new_sales_collection as __new_sales_collection
@@ -79,6 +80,7 @@ def fill_gaps():
                 if j not in df:
                     continue
                 df[j] = df[j].interpolate(limit_area="inside")
+            df = df.replace({__np.nan: None})
             df = df.to_dict(orient="records")
             for i in df:
                 try:
