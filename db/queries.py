@@ -1,12 +1,21 @@
 from pandas import isna
 
 from db.helpers import gm_sales_collection as __gm_sales_collection
+from db.helpers import gm_stores_collection as __gm_stores_collection
 from db.helpers import new_sales_collection as __new_sales_collection
+
+
+def gm_stores_find(country: str = "Kuwait"):
+    return __gm_stores_collection.find({"Level_1_Area": country})
 
 
 def gm_sales_find(country: str = "Kuwait"):
     return __gm_sales_collection.find(
-        {"Level_1_Area": country, "Source": {"$ne": "Algorithm"}}
+        {
+            "Level_1_Area": country,
+            "Monthly_Sales": {"$nin": [0, None]},
+            "Source": {"$nin": ["Algorithm", "Estimate"]},
+        }
     )
 
 
@@ -160,6 +169,21 @@ def new_sales_update_single_record(
         or delivery < 0
     ):
         return None
+    if reference_full_id == "Foodservice 139127":
+        print(
+            {
+                "Weekday_Store_Sales": weekday_store_sales,
+                "Weekday_Delivery_Sales": weekday_delivery_sales,
+                "Weekend_Store_Sales": weekend_store_sales,
+                "Weekend_Delivery_Sales": weekend_delivery_sales,
+                "Weekday_Total_Sales": weekday_total_sales,
+                "Weekend_Total_Sales": weekend_total_sales,
+                "Monthly_Store_Sales": monthly_store_sales,
+                "Monthly_Delivery_Sales": monthly_delivery_sales,
+                "Monthly_Sales": monthly_sales,
+                "Delivery_%": delivery,
+            }
+        )
     return __new_sales_collection.update_one(
         {
             "Source": "Generated",

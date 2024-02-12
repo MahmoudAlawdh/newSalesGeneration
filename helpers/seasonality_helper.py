@@ -209,8 +209,8 @@ def update_records(df: pd.DataFrame):
     return df
 
 
-def forward_fill():
-    df = pd.DataFrame(new_sales_collection.find())
+def forward_fill(skip: int, limit: int):
+    df = pd.DataFrame(new_sales_collection.find().limit(limit).skip(skip))
     df = setup_seasonalities(
         df, area_df, industry_df, location_type_df, product_focus_df
     )
@@ -270,23 +270,24 @@ def forward_fill():
         return df
 
     df = df.groupby("Reference_Full_ID").apply(f)
-    df.drop(
-        [
-            "weekday_store_sales_seasonality",
-            "weekday_delivery_sales_seasonality",
-            "weekend_store_sales_seasonality",
-            "weekend_delivery_sales_seasonality",
-        ],
-        axis=1,
-        inplace=True,
-    )
-    print("changed", len(df[df["changed"] == True]))
-    update_records(df[df["changed"] == True])
+    if "changed" in df.columns:
+        df.drop(
+            [
+                "weekday_store_sales_seasonality",
+                "weekday_delivery_sales_seasonality",
+                "weekend_store_sales_seasonality",
+                "weekend_delivery_sales_seasonality",
+            ],
+            axis=1,
+            inplace=True,
+        )
+        print("changed", len(df[df["changed"] == True]))
+        update_records(df[df["changed"] == True])
     return df
 
 
-def backword_fill():
-    df = pd.DataFrame(new_sales_collection.find())
+def backword_fill(skip: int, limit: int):
+    df = pd.DataFrame(new_sales_collection.find().limit(limit).skip(skip))
     df = setup_seasonalities(
         df,
         area_reverse_df,
@@ -350,15 +351,17 @@ def backword_fill():
         return df
 
     df = df.groupby("Reference_Full_ID").apply(f)
-    df.drop(
-        [
-            "weekday_store_sales_seasonality",
-            "weekday_delivery_sales_seasonality",
-            "weekend_store_sales_seasonality",
-            "weekend_delivery_sales_seasonality",
-        ],
-        axis=1,
-        inplace=True,
-    )
-    print("changed", len(df[df["changed"] == True]))
-    update_records(df[df["changed"] == True])
+    if "changed" in df.columns:
+        df.drop(
+            [
+                "weekday_store_sales_seasonality",
+                "weekday_delivery_sales_seasonality",
+                "weekend_store_sales_seasonality",
+                "weekend_delivery_sales_seasonality",
+            ],
+            axis=1,
+            inplace=True,
+        )
+        print("changed", len(df[df["changed"] == True]))
+        update_records(df[df["changed"] == True])
+    return df

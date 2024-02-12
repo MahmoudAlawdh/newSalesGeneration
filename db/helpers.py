@@ -12,4 +12,5 @@ def __get_db(
 
 
 gm_sales_collection = __get_db("gm", "Sales")
+gm_stores_collection = __get_db("gm", "Stores")
 new_sales_collection = __get_db("NewSales", "Sales")

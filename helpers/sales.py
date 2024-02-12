@@ -3,6 +3,7 @@ from datetime import datetime as __datetime
 import pandas as __pd
 
 from db.queries import gm_sales_find as __gm_sales_find
+from db.queries import gm_stores_find as __gm_stores_find
 from db.queries import new_sales_delete as __new_sales_delete
 from db.queries import new_sales_find as __new_sales_find
 from db.queries import (
@@ -55,9 +56,10 @@ def clear_db():
     print("Done Clearing")
 
 
-def __generate_record(primary_id: int, i, sales_period: __datetime):
+def __generate_record(primary_id: int, i: dict, sales_period: __datetime):
     reference_full_id = f'{i.get("Reference_Sheet")} {i["Reference_ID"]}'
     product_focus = i.get("Product_Focus")
+    location_type = i.get("Location_Type")
     return {
         "Primary_ID": primary_id,
         "Primary_Sheet": "Sales",
@@ -70,7 +72,7 @@ def __generate_record(primary_id: int, i, sales_period: __datetime):
         "Product_Focus": product_focus if product_focus != 0 else None,
         "Brand": i.get("Brand"),
         "Location_Name": i.get("Location_Name"),
-        "Location_Type": i.get("Location_Type"),
+        "Location_Type": location_type if location_type != 0 else None,
         "Location_Name_ID": i.get("Location_Name_ID"),
         "Level_1_Area": i["Level_1_Area"],
         "Level_2_Area": i["Level_2_Area"],
@@ -114,7 +116,7 @@ def generate_all_sales_records():
     )
     records = []
     count = 0
-    for i in __gm_sales_find("Kuwait"):
+    for i in __gm_stores_find("Kuwait"):
         reference_full_id = f'{i.get("Reference_Sheet")} {i["Reference_ID"]}'
         if reference_full_id in reference_ids_set:
             continue
