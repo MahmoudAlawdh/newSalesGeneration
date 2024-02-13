@@ -65,7 +65,7 @@ def __generate_seasonality_record(base, data):
 
 
 def __getDates(
-    start_date: datetime = datetime(2016, 1, 1),
+    start_date: datetime = datetime(2018, 1, 1),
     end_date: datetime = datetime(2023, 12, 1),
 ):
     date = start_date

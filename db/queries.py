@@ -52,7 +52,7 @@ def new_sales_average_sale():
                 "$match": {
                     "Monthly_Sales": {"$ne": None},
                     "Industry_Level_2": {"$ne": 0},
-                    "Sales_Year": {"$gte": 2016},
+                    "Sales_Year": {"$gte": 2018},
                 }
             },
             {
@@ -93,7 +93,7 @@ def new_sales_refenrece_ids_with_sales_count():
                         {"Monthly_Sales": {"$ne": None}},
                         {"Monthly_Sales": {"$ne": 0}},
                     ],
-                    "Sales_Year": {"$gte": 2016},
+                    "Sales_Year": {"$gte": 2018},
                 }
             },
             {"$group": {"_id": "$Reference_Full_ID", "fieldN": {"$sum": 1}}},

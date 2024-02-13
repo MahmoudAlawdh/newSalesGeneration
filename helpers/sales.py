@@ -123,12 +123,12 @@ def generate_all_sales_records():
         closing_year = i.get("Store_Closing_Year", 2023)
         closing_month = i.get("Store_Closing_Month", 12)
         closing_day = i.get("Store_Closing_Day", 1)
-        opening_year = i.get("Store_Opening_Year", 2016)
+        opening_year = i.get("Store_Opening_Year", 2018)
         opening_month = i.get("Store_Opening_Month", 1)
         opening_day = i.get("Store_Opening_Day", 1)
         sales_periods = get_list_of_sales_period(
             __datetime(
-                int(opening_year if opening_year != 0 else 2016),
+                int(opening_year if opening_year != 0 else 2018),
                 int(opening_month if opening_month != 0 else 1),
                 int(opening_day if opening_day != 0 else 1),
             ),
@@ -155,8 +155,8 @@ def generate_all_sales_records():
 
 def __opening_date(i: dict):
     def __check_date(year, month, day):
-        if year < 2016:
-            year = 2016
+        if year < 2018:
+            year = 2018
         if month == 0:
             month = 1
         if day == 0:
@@ -164,12 +164,12 @@ def __opening_date(i: dict):
         return int(year), int(month), int(day)
 
     opening_year, opening_month, opening_day = (
-        i.get("Store_Opening_Year", 2016),
+        i.get("Store_Opening_Year", 2018),
         i.get("Store_Opening_Month", 1),
         i.get("Store_Opening_Day", 1),
     )
     if opening_year == None:
-        opening_year = 2016
+        opening_year = 2018
     if opening_month == None:
         opening_month = 1
     if opening_day == None:

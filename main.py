@@ -64,6 +64,20 @@ def step_3():
             "Sales_Month",
         ]
     )
+
+    # step_2()
+
+
+def step_4():
+    """
+    fill rest of the gaps
+    """
+    batch_count = 500_000
+    for i in range(0, 20):
+        forward_fill(batch_count * i, batch_count)
+    for i in range(0, 20):
+        backword_fill(batch_count * i, batch_count)
+    step_3()
     fill_sales_with_averages(
         [
             "Level_3_Area",
@@ -82,26 +96,13 @@ def step_3():
             "Sales_Month",
         ]
     )
-    step_2()
-
-
-def step_4():
-    """
-    fill rest of the gaps
-    """
-    batch_count = 500_000
-    for i in range(0, 20):
-        forward_fill(batch_count * i, batch_count)
-    for i in range(0, 20):
-        backword_fill(batch_count * i, batch_count)
-    step_3()
 
 
 if __name__ == "__main__":
     """
     Loop through all the ids, find all close sales, with the same industry and location type with x distance
     """
-    step_1()
-    step_2()
-    # step_3()
-    # step_4()
+    # step_1()
+    # step_2()
+    step_3()
+    step_4()

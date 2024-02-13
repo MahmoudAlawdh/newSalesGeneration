@@ -8,4 +8,4 @@ def setup_sales():
     __clear_db()
     __copy_sales()
     __fill_sales_gaps()
-    # __generate_all_sales_records()
+    __generate_all_sales_records()
