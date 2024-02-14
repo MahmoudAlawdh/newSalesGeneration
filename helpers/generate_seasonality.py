@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 
+from config import YEAR
 from db.helpers import new_sales_collection
 from helpers.tables import area_table, industry_table
 
@@ -65,7 +66,7 @@ def __generate_seasonality_record(base, data):
 
 
 def __getDates(
-    start_date: datetime = datetime(2018, 1, 1),
+    start_date: datetime = datetime(YEAR, 1, 1),
     end_date: datetime = datetime(2023, 12, 1),
 ):
     date = start_date

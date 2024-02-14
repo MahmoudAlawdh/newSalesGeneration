@@ -1,5 +1,6 @@
 from pandas import isna
 
+from config import YEAR
 from db.helpers import gm_sales_collection as __gm_sales_collection
 from db.helpers import gm_stores_collection as __gm_stores_collection
 from db.helpers import new_sales_collection as __new_sales_collection
@@ -52,7 +53,7 @@ def new_sales_average_sale():
                 "$match": {
                     "Monthly_Sales": {"$ne": None},
                     "Industry_Level_2": {"$ne": 0},
-                    "Sales_Year": {"$gte": 2018},
+                    "Sales_Year": {"$gte": YEAR},
                 }
             },
             {
@@ -89,11 +90,8 @@ def new_sales_refenrece_ids_with_sales_count():
                 "$match": {
                     "Source": {"$ne": "Algorithm"},
                     "Level_1_Area": "Kuwait",
-                    "$and": [
-                        {"Monthly_Sales": {"$ne": None}},
-                        {"Monthly_Sales": {"$ne": 0}},
-                    ],
-                    "Sales_Year": {"$gte": 2018},
+                    "Monthly_Sales": {"$nin": [None, 0]},
+                    "Sales_Year": {"$gte": YEAR},
                 }
             },
             {"$group": {"_id": "$Reference_Full_ID", "fieldN": {"$sum": 1}}},

@@ -1,5 +1,6 @@
 import numpy as __np
 import pandas as __pd
+from sqlalchemy import false
 
 from db.helpers import new_sales_collection as __new_sales_collection
 from db.queries import (
@@ -46,6 +47,17 @@ def __find_seg(data: list[dict], seg_len: int):
                     seg = [i]
 
 
+def sales_seg_by_id(id: str):
+    sales = list(
+        __new_sales_collection.find(
+            {
+                "Reference_Full_ID": id,
+            }
+        ).sort("Sales_Period")
+    )
+    return list(__find_seg(sales, 3))
+
+
 def fill_gaps():
     keys = [
         "Weekday_Store_Sales",
@@ -53,17 +65,9 @@ def fill_gaps():
         "Weekend_Store_Sales",
         "Weekend_Delivery_Sales",
     ]
-    ids = list(__new_sales_refenrece_ids_with_sales_count())
     count = 0
-    for i in ids:
-        sales = list(
-            __new_sales_collection.find(
-                {
-                    "Reference_Full_ID": i["_id"],
-                }
-            ).sort("Sales_Period")
-        )
-        sales = list(__find_seg(sales, 3))
+    for i in __new_sales_refenrece_ids_with_sales_count():
+        sales = sales_seg_by_id(i["_id"])
         if not sales:
             continue
         for j in sales:
@@ -76,26 +80,29 @@ def fill_gaps():
                 ):
                     count += 1
             df = __pd.DataFrame(j)
-            for j in keys:
-                if j not in df:
-                    continue
-                df[j] = df[j].interpolate(limit_area="inside")
+            interpolation_keys = list(set(df.columns) & set(keys))
+            df[interpolation_keys] = df[interpolation_keys].interpolate(
+                limit_area="inside"
+            )
             df = df.replace({__np.nan: None})
-            df = df.to_dict(orient="records")
-            for i in df:
+            for row in df.itertuples(index=False):
                 try:
-                    weekday_store_sales = i.get("Weekday_Store_Sales", None)
-                    weekday_delivery_sales = i.get("Weekday_Delivery_Sales", None)
-                    weekend_store_sales = i.get("Weekend_Store_Sales", None)
-                    weekend_delivery_sales = i.get("Weekend_Delivery_Sales", None)
-                    location_type = i["Location_Type"]
-                    industry = i["Industry_Level_2"]
-                    product_focus = i["Product_Focus"]
-                    area = i["Level_3_Area"]
-                    year = i["Sales_Year"]
-                    month = i["Sales_Month"]
+                    weekday_store_sales = getattr(row, "Weekday_Store_Sales", None)
+                    weekday_delivery_sales = getattr(
+                        row, "Weekday_Delivery_Sales", None
+                    )
+                    weekend_store_sales = getattr(row, "Weekend_Store_Sales", None)
+                    weekend_delivery_sales = getattr(
+                        row, "Weekend_Delivery_Sales", None
+                    )
+                    location_type = row.Location_Type
+                    industry = row.Industry_Level_2
+                    product_focus = row.Product_Focus
+                    area = row.Level_3_Area
+                    year = row.Sales_Year
+                    month = row.Sales_Month
                     __new_sales_update_single_record(
-                        i["Reference_Full_ID"],
+                        row.Reference_Full_ID,
                         year,
                         month,
                         location_type,
@@ -109,3 +116,4 @@ def fill_gaps():
                     )
                 except Exception as error:
                     print("Error", error)
+    print({"count": count})

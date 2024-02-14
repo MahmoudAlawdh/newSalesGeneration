@@ -1,11 +1,6 @@
-from uu import Error
-
 import numpy as np
 import pandas as pd
-from dask import dataframe as dd
-from pymongo import DeleteMany
 
-import setup
 from db.helpers import new_sales_collection
 from db.queries import new_sales_update_single_record
 from helpers.sales import derived_fields
@@ -180,6 +175,7 @@ def setup_seasonalities(
 
 
 def update_records(df: pd.DataFrame):
+    df = df.replace({np.nan: None})
     records = df.to_dict(orient="records")
     for i in records:
         reference_full_id = i["Reference_Full_ID"]
@@ -211,6 +207,8 @@ def update_records(df: pd.DataFrame):
 
 def forward_fill(skip: int, limit: int):
     df = pd.DataFrame(new_sales_collection.find().limit(limit).skip(skip))
+    if df.is_empty:
+        return None
     df = setup_seasonalities(
         df, area_df, industry_df, location_type_df, product_focus_df
     )
@@ -288,6 +286,8 @@ def forward_fill(skip: int, limit: int):
 
 def backword_fill(skip: int, limit: int):
     df = pd.DataFrame(new_sales_collection.find().limit(limit).skip(skip))
+    if df.is_empty:
+        return None
     df = setup_seasonalities(
         df,
         area_reverse_df,
