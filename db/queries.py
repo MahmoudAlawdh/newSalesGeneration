@@ -1,4 +1,7 @@
+from calendar import weekday
+
 from pandas import isna
+from pymongo import UpdateOne
 
 from config import YEAR
 from db.helpers import gm_sales_collection as __gm_sales_collection
@@ -13,7 +16,7 @@ def gm_stores_find(country: str = "Kuwait"):
 def gm_sales_find(country: str = "Kuwait"):
     return __gm_sales_collection.find(
         {
-            "Level_1_Area": country,
+            # "Level_1_Area": country,
             "Monthly_Sales": {"$nin": [0, None]},
             "Source": {"$nin": ["Algorithm", "Estimate"]},
         }
@@ -101,7 +104,7 @@ def new_sales_refenrece_ids_with_sales_count():
     )
 
 
-def new_sales_update_single_record(
+def fix_record(
     reference_full_id,
     year,
     month,
@@ -167,6 +170,56 @@ def new_sales_update_single_record(
         or delivery < 0
     ):
         return None
+    return {
+        "reference_full_id": reference_full_id,
+        "year": year,
+        "month": month,
+        "location_type": location_type,
+        "industry": industry,
+        "product_focus": product_focus,
+        "area": area,
+        "weekday_store_sales": fix_none(weekday_store_sales),
+        "weekday_delivery_sales": fix_none(weekday_delivery_sales),
+        "weekend_store_sales": fix_none(weekend_store_sales),
+        "weekend_delivery_sales": fix_none(weekend_delivery_sales),
+        "weekday_total_sales": weekday_total_sales,
+        "weekend_total_sales": weekend_total_sales,
+        "monthly_store_sales": monthly_store_sales,
+        "monthly_delivery_sales": monthly_delivery_sales,
+        "monthly_sales": monthly_sales,
+        "delivery": delivery,
+    }
+
+
+def new_sales_update_single_record(
+    reference_full_id,
+    year,
+    month,
+    location_type,
+    industry,
+    product_focus,
+    area,
+    weekday_store_sales: None | float,
+    weekday_delivery_sales: None | float,
+    weekend_store_sales: None | float,
+    weekend_delivery_sales: None | float,
+):
+    x = fix_record(
+        reference_full_id,
+        year,
+        month,
+        location_type,
+        industry,
+        product_focus,
+        area,
+        weekday_store_sales,
+        weekday_delivery_sales,
+        weekend_store_sales,
+        weekend_delivery_sales,
+    )
+    if not x:
+        return None
+
     return __new_sales_collection.update_one(
         {
             "Source": "Generated",
@@ -186,12 +239,67 @@ def new_sales_update_single_record(
                 "Weekday_Delivery_Sales": weekday_delivery_sales,
                 "Weekend_Store_Sales": weekend_store_sales,
                 "Weekend_Delivery_Sales": weekend_delivery_sales,
-                "Weekday_Total_Sales": weekday_total_sales,
-                "Weekend_Total_Sales": weekend_total_sales,
-                "Monthly_Store_Sales": monthly_store_sales,
-                "Monthly_Delivery_Sales": monthly_delivery_sales,
-                "Monthly_Sales": monthly_sales,
-                "Delivery_%": delivery,
+                "Weekday_Total_Sales": x["weekday_total_sales"],
+                "Weekend_Total_Sales": x["weekend_total_sales"],
+                "Monthly_Store_Sales": x["monthly_store_sales"],
+                "Monthly_Delivery_Sales": x["monthly_delivery_sales"],
+                "Monthly_Sales": x["monthly_sales"],
+                "Delivery_%": x["delivery"],
             }
         },
+    )
+
+
+def new_sales_update_many_record(data: list[dict]):
+    operations = [
+        fix_record(
+            i["reference_full_id"],
+            i["year"],
+            i["month"],
+            i["location_type"],
+            i["industry"],
+            i["product_focus"],
+            i["area"],
+            i["weekday_store_sales"],
+            i["weekday_delivery_sales"],
+            i["weekend_store_sales"],
+            i["weekend_delivery_sales"],
+        )
+        for i in data
+    ]
+    operations = [x for x in operations if x is not None]
+    if len(operations) == 0:
+        return None
+    return __new_sales_collection.bulk_write(
+        [
+            UpdateOne(
+                {
+                    "Source": "Generated",
+                    "Study": "Generated",
+                    "Researcher": "Mahmoud",
+                    "Reference_Full_ID": i["reference_full_id"],
+                    "Sales_Month": i["month"],
+                    "Sales_Year": i["year"],
+                    "Location_Type": i["location_type"],
+                    "Industry_Level_2": i["industry"],
+                    "Product_Focus": i["product_focus"],
+                    "Level_3_Area": i["area"],
+                },
+                {
+                    "$set": {
+                        "Weekday_Store_Sales": i["weekday_store_sales"],
+                        "Weekday_Delivery_Sales": i["weekday_delivery_sales"],
+                        "Weekend_Store_Sales": i["weekend_store_sales"],
+                        "Weekend_Delivery_Sales": i["weekend_delivery_sales"],
+                        "Weekday_Total_Sales": i["weekday_total_sales"],
+                        "Weekend_Total_Sales": i["weekend_total_sales"],
+                        "Monthly_Store_Sales": i["monthly_store_sales"],
+                        "Monthly_Delivery_Sales": i["monthly_delivery_sales"],
+                        "Monthly_Sales": i["monthly_sales"],
+                        "Delivery_%": i["delivery"],
+                    },
+                },
+            )
+            for i in operations
+        ]
     )

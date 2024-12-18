@@ -4,6 +4,6 @@ from helpers.sales import fill_sales_gaps as __fill_sales_gaps
 
 
 def setup_sales():
-    __clear_db()
-    __copy_sales()
+    # __clear_db()
+    # __copy_sales()
     __fill_sales_gaps()

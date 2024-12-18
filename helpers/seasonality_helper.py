@@ -1,8 +1,10 @@
+from typing import Literal
+
 import numpy as np
 import pandas as pd
 
 from db.helpers import new_sales_collection
-from db.queries import new_sales_update_single_record
+from db.queries import new_sales_update_many_record, new_sales_update_single_record
 from helpers.sales import derived_fields
 
 area_df = pd.read_excel("./seasonalities.xlsx", "area")
@@ -177,6 +179,7 @@ def setup_seasonalities(
 def update_records(df: pd.DataFrame):
     df = df.replace({np.nan: None})
     records = df.to_dict(orient="records")
+    results = []
     for i in records:
         reference_full_id = i["Reference_Full_ID"]
         year = i["Sales_Year"]
@@ -189,179 +192,95 @@ def update_records(df: pd.DataFrame):
         weekday_delivery_sales = i["Weekday_Delivery_Sales"]
         weekend_store_sales = i["Weekend_Store_Sales"]
         weekend_delivery_sales = i["Weekend_Delivery_Sales"]
-        new_sales_update_single_record(
-            reference_full_id,
-            year,
-            month,
-            location_type,
-            industry,
-            product_focus,
-            area,
-            weekday_store_sales,
-            weekday_delivery_sales,
-            weekend_store_sales,
-            weekend_delivery_sales,
+        results.append(
+            {
+                "reference_full_id": reference_full_id,
+                "year": year,
+                "month": month,
+                "location_type": location_type,
+                "industry": industry,
+                "product_focus": product_focus,
+                "area": area,
+                "weekday_store_sales": weekday_store_sales,
+                "weekday_delivery_sales": weekday_delivery_sales,
+                "weekend_store_sales": weekend_store_sales,
+                "weekend_delivery_sales": weekend_delivery_sales,
+            }
         )
+    new_sales_update_many_record(results)
     return df
 
 
-def forward_fill(skip: int, limit: int):
-    df = pd.DataFrame(new_sales_collection.find().limit(limit).skip(skip))
-    if df.is_empty:
+def f(df: pd.DataFrame):
+    sales_cols = [
+        "Weekday_Store_Sales",
+        "Weekday_Delivery_Sales",
+        "Weekend_Delivery_Sales",
+        "Weekend_Store_Sales",
+    ]
+    seasonality_cols = [
+        "weekday_store_sales_seasonality",
+        "weekday_delivery_sales_seasonality",
+        "weekend_store_sales_seasonality",
+        "weekend_delivery_sales_seasonality",
+    ]
+
+    for _ in range(len(df[df["Monthly_Sales"].isna()])):
+        mask = (
+            df["Monthly_Sales"].isna()
+            & (df["Source"] == "Generated")
+            & df[sales_cols].shift().notna().any(axis=1)
+        )
+        for sales_col, seasonality_col in zip(sales_cols, seasonality_cols):
+            df.loc[mask, sales_col] = df[sales_col].shift() * (
+                1 + df.loc[mask, seasonality_col]
+            )
+            df.loc[mask, "changed"] = True
+
+    return df
+
+
+def get_seasonalities(mode: Literal["Forward", "Backward"]):
+    if mode == "Forward":
+        return area_df, industry_df, location_type_df, product_focus_df
+    if mode == "Backward":
+        return (
+            area_reverse_df,
+            industry_reverse_df,
+            location_type_reverse_df,
+            product_focus_reverse_df,
+        )
+
+
+def fill(data, mode: Literal["Forward", "Backward"]):
+    if len(data) == 0:
         return None
+    df = pd.DataFrame(data)
+    (area_df, industry_df, location_type_df, product_focus_df) = get_seasonalities(mode)
     df = setup_seasonalities(
         df, area_df, industry_df, location_type_df, product_focus_df
     )
-
-    def f(df: pd.DataFrame):
-        prevRow = {
-            "Weekday_Store_Sales": pd.NA,
-            "Weekday_Delivery_Sales": pd.NA,
-            "Weekend_Delivery_Sales": pd.NA,
-            "Weekend_Store_Sales": pd.NA,
-        }
-        for i, row in df.iterrows():
-            if i == 0:
-                prevRow = {
-                    "Weekday_Store_Sales": pd.NA,
-                    "Weekday_Delivery_Sales": pd.NA,
-                    "Weekend_Delivery_Sales": pd.NA,
-                    "Weekend_Store_Sales": pd.NA,
-                }
-                continue
-            if (
-                pd.isna(row.Monthly_Sales)
-                and row.Source == "Generated"
-                and pd.notna(prevRow["Weekday_Store_Sales"])
-            ):
-                weekday_delivery_sales_seasonality = (
-                    row.weekday_delivery_sales_seasonality
-                )
-                weekday_store_sales_seasonality = row.weekday_store_sales_seasonality
-                weekend_store_sales_seasonality = row.weekend_store_sales_seasonality
-                weekend_delivery_sales_seasonality = (
-                    row.weekend_delivery_sales_seasonality
-                )
-                df.at[i, "Weekday_Store_Sales"] = prevRow["Weekday_Store_Sales"] + (
-                    prevRow["Weekday_Store_Sales"] * weekday_store_sales_seasonality
-                )
-                df.at[i, "Weekday_Delivery_Sales"] = prevRow[
-                    "Weekday_Delivery_Sales"
-                ] + (
-                    prevRow["Weekday_Delivery_Sales"]
-                    * weekday_delivery_sales_seasonality
-                )
-                df.at[i, "Weekend_Delivery_Sales"] = prevRow[
-                    "Weekend_Delivery_Sales"
-                ] + (
-                    prevRow["Weekend_Delivery_Sales"]
-                    * weekend_delivery_sales_seasonality
-                )
-                df.at[i, "Weekend_Store_Sales"] = prevRow["Weekend_Store_Sales"] + (
-                    prevRow["Weekend_Store_Sales"] * weekend_store_sales_seasonality
-                )
-                df.at[i, "changed"] = True
-            prevRow["Weekday_Store_Sales"] = df.at[i, "Weekday_Store_Sales"]
-            prevRow["Weekday_Delivery_Sales"] = df.at[i, "Weekday_Delivery_Sales"]
-            prevRow["Weekend_Delivery_Sales"] = df.at[i, "Weekend_Delivery_Sales"]
-            prevRow["Weekend_Store_Sales"] = df.at[i, "Weekend_Store_Sales"]
-        return df
-
-    df = df.groupby("Reference_Full_ID").apply(f)
-    if "changed" in df.columns:
-        df.drop(
-            [
-                "weekday_store_sales_seasonality",
-                "weekday_delivery_sales_seasonality",
-                "weekend_store_sales_seasonality",
-                "weekend_delivery_sales_seasonality",
-            ],
-            axis=1,
-            inplace=True,
-        )
-        print("changed", len(df[df["changed"] == True]))
-        update_records(df[df["changed"] == True])
-    return df
-
-
-def backword_fill(skip: int, limit: int):
-    df = pd.DataFrame(new_sales_collection.find().limit(limit).skip(skip))
-    if df.is_empty:
-        return None
-    df = setup_seasonalities(
-        df,
-        area_reverse_df,
-        industry_reverse_df,
-        location_type_reverse_df,
-        product_focus_reverse_df,
+    #
+    if mode == "Forward":
+        df = df.groupby("Reference_Full_ID").apply(f)
+    if mode == "Backward":
+        df = df.iloc[::-1]
+        df = df.groupby("Reference_Full_ID").apply(f)
+        df = df.iloc[::-1]
+    #
+    df.drop(
+        [
+            "weekday_store_sales_seasonality",
+            "weekday_delivery_sales_seasonality",
+            "weekend_store_sales_seasonality",
+            "weekend_delivery_sales_seasonality",
+        ],
+        axis=1,
+        inplace=True,
     )
-
-    def f(df: pd.DataFrame):
-        prevRow = {
-            "Weekday_Store_Sales": pd.NA,
-            "Weekday_Delivery_Sales": pd.NA,
-            "Weekend_Delivery_Sales": pd.NA,
-            "Weekend_Store_Sales": pd.NA,
-        }
-        for i, row in reversed(list(df.iterrows())):
-            if i == 0:
-                prevRow = {
-                    "Weekday_Store_Sales": pd.NA,
-                    "Weekday_Delivery_Sales": pd.NA,
-                    "Weekend_Delivery_Sales": pd.NA,
-                    "Weekend_Store_Sales": pd.NA,
-                }
-                continue
-            if (
-                pd.isna(row.Monthly_Sales)
-                and row.Source == "Generated"
-                and pd.notna(prevRow["Weekday_Store_Sales"])
-            ):
-                weekday_delivery_sales_seasonality = (
-                    row.weekday_delivery_sales_seasonality
-                )
-                weekday_store_sales_seasonality = row.weekday_store_sales_seasonality
-                weekend_store_sales_seasonality = row.weekend_store_sales_seasonality
-                weekend_delivery_sales_seasonality = (
-                    row.weekend_delivery_sales_seasonality
-                )
-                df.at[i, "Weekday_Store_Sales"] = prevRow["Weekday_Store_Sales"] + (
-                    prevRow["Weekday_Store_Sales"] * weekday_store_sales_seasonality
-                )
-                df.at[i, "Weekday_Delivery_Sales"] = prevRow[
-                    "Weekday_Delivery_Sales"
-                ] + (
-                    prevRow["Weekday_Delivery_Sales"]
-                    * weekday_delivery_sales_seasonality
-                )
-                df.at[i, "Weekend_Delivery_Sales"] = prevRow[
-                    "Weekend_Delivery_Sales"
-                ] + (
-                    prevRow["Weekend_Delivery_Sales"]
-                    * weekend_delivery_sales_seasonality
-                )
-                df.at[i, "Weekend_Store_Sales"] = prevRow["Weekend_Store_Sales"] + (
-                    prevRow["Weekend_Store_Sales"] * weekend_store_sales_seasonality
-                )
-                df.at[i, "changed"] = True
-            prevRow["Weekday_Store_Sales"] = df.at[i, "Weekday_Store_Sales"]
-            prevRow["Weekday_Delivery_Sales"] = df.at[i, "Weekday_Delivery_Sales"]
-            prevRow["Weekend_Delivery_Sales"] = df.at[i, "Weekend_Delivery_Sales"]
-            prevRow["Weekend_Store_Sales"] = df.at[i, "Weekend_Store_Sales"]
-        return df
-
-    df = df.groupby("Reference_Full_ID").apply(f)
     if "changed" in df.columns:
-        df.drop(
-            [
-                "weekday_store_sales_seasonality",
-                "weekday_delivery_sales_seasonality",
-                "weekend_store_sales_seasonality",
-                "weekend_delivery_sales_seasonality",
-            ],
-            axis=1,
-            inplace=True,
-        )
-        print("changed", len(df[df["changed"] == True]))
-        update_records(df[df["changed"] == True])
+        changed_len = len(df[df["changed"] == True])
+        if changed_len > 0:
+            print("changed", changed_len)
+            update_records(df[df["changed"] == True])
     return df
