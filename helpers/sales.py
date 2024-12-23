@@ -1,5 +1,6 @@
 import numbers
 from datetime import datetime as __datetime
+from typing import Literal
 
 import pandas as __pd
 
@@ -16,7 +17,9 @@ from db.queries import new_sales_insert as __new_sales_insert
 from helpers.dates import get_last_day_of_the_month, get_list_of_sales_period
 
 
-def get_sales_primary_id_and_reference_ids_set(country: str | None = None):
+def get_sales_primary_id_and_reference_ids_set(
+    country: list[Literal["Kuwait", "Bahrain", "Qatar"]]
+):
     print("Getting Sales Primary ID and Reference IDs Set")
     primary_id: int = 0
     reference_ids_set = set()
@@ -32,10 +35,10 @@ def get_sales_primary_id_and_reference_ids_set(country: str | None = None):
     return primary_id, reference_ids_set
 
 
-def copy_sales():
+def copy_sales(country: list[Literal["Kuwait", "Bahrain", "Qatar"]]):
     print("Copying Sales")
     records = []
-    for i in __gm_sales_find():
+    for i in __gm_sales_find(country):
         location_type = i["Location_Type"]
         industry_level_2 = i["Industry_Level_2"]
         product_focus = i["Product_Focus"]
@@ -117,20 +120,16 @@ def __generate_record(primary_id: int, i: dict, sales_period: __datetime):
     }
 
 
-def generate_all_sales_records():
+def generate_all_sales_records(country: list[Literal["Kuwait", "Bahrain", "Qatar"]]):
     print("Generating all sales Records")
-    primary_id, reference_ids_set = get_sales_primary_id_and_reference_ids_set(
-        # country="Kuwait"
-    )
+    primary_id, reference_ids_set = get_sales_primary_id_and_reference_ids_set(country)
     current_year = __datetime.now().year
     records = []
     count = 0
-    for i in __gm_stores_find(
-        # "Kuwait"
-    ):
+    for i in __gm_stores_find(["Bahrain", "Qatar"]):
         reference_full_id = f'{i.get("Reference_Sheet")} {i["Reference_ID"]}'
-        if reference_full_id in reference_ids_set:
-            continue
+        # if reference_full_id in reference_ids_set:
+        #     continue
         closing_year = i.get("Store_Closing_Year", 2025)
         closing_month = i.get("Store_Closing_Month", 12)
         closing_day = i.get("Store_Closing_Day", 1)
@@ -219,9 +218,9 @@ def __closing_date(i):
     return __datetime(year, month, day)
 
 
-def fill_sales_gaps():
+def fill_sales_gaps(country: list[Literal["Kuwait", "Bahrain", "Qatar"]]):
     print("Filling sales gaps")
-    primary_id, reference_ids_set = get_sales_primary_id_and_reference_ids_set("Kuwait")
+    primary_id, reference_ids_set = get_sales_primary_id_and_reference_ids_set(country)
     records = []
     count = 0
     for i in reference_ids_set:

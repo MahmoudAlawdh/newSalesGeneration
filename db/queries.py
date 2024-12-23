@@ -1,4 +1,5 @@
 from calendar import weekday
+from typing import Literal
 
 from pandas import isna
 from pymongo import UpdateOne
@@ -9,14 +10,14 @@ from db.helpers import gm_stores_collection as __gm_stores_collection
 from db.helpers import new_sales_collection as __new_sales_collection
 
 
-def gm_stores_find(country: str = "Kuwait"):
-    return __gm_stores_collection.find({"Level_1_Area": country})
+def gm_stores_find(country: list[Literal["Kuwait", "Bahrain", "Qatar"]]):
+    return __gm_stores_collection.find({"Level_1_Area": {"$in": country}})
 
 
-def gm_sales_find(country: str = "Kuwait"):
+def gm_sales_find(country: list[Literal["Kuwait", "Bahrain", "Qatar"]]):
     return __gm_sales_collection.find(
         {
-            # "Level_1_Area": country,
+            "Level_1_Area": {"$in": country},
             "Monthly_Sales": {"$nin": [0, None]},
             "Source": {"$nin": ["Algorithm", "Estimate"]},
         }
@@ -31,17 +32,19 @@ def new_sales_delete():
     return __new_sales_collection.delete_many({})
 
 
-def new_sales_find(country: str | None = None):
+def new_sales_find(country: list[Literal["Kuwait", "Bahrain", "Qatar"]]):
     if country is None:
         return __new_sales_collection.find()
-    return __new_sales_collection.find({"Level_1_Area": country})
+    return __new_sales_collection.find({"Level_1_Area": {"$in": country}})
 
 
 def new_sales_find_by_country_and_reference_full_id(
     country: str, reference_full_id: str
 ):
     return __new_sales_collection.find(
-        {"Reference_Full_ID": reference_full_id, "Level_1_Area": country}
+        {
+            "Reference_Full_ID": reference_full_id,
+        }
     )
 
 
@@ -92,7 +95,6 @@ def new_sales_refenrece_ids_with_sales_count():
             {
                 "$match": {
                     "Source": {"$ne": "Algorithm"},
-                    "Level_1_Area": "Kuwait",
                     "Monthly_Sales": {"$nin": [None, 0]},
                     "Sales_Year": {"$gte": YEAR},
                 }
@@ -219,7 +221,6 @@ def new_sales_update_single_record(
     )
     if not x:
         return None
-
     return __new_sales_collection.update_one(
         {
             "Source": "Generated",
@@ -228,10 +229,6 @@ def new_sales_update_single_record(
             "Reference_Full_ID": reference_full_id,
             "Sales_Month": month,
             "Sales_Year": year,
-            "Location_Type": location_type,
-            "Industry_Level_2": industry,
-            "Product_Focus": product_focus,
-            "Level_3_Area": area,
         },
         {
             "$set": {

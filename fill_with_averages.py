@@ -1,3 +1,4 @@
+from typing import List
 from typing import Literal as __Literal
 from typing import Optional as __Optional
 
@@ -8,21 +9,20 @@ from db.queries import (
     new_sales_update_single_record as __new_sales_update_single_record,
 )
 
-Params = list[
-    __Literal[
-        "Location_Type",
-        "Level_2_Area",
-        "Level_3_Area",
-        "Brand",
-        "Product_Focus",
-        "Industry_Level_2",
-        "Sales_Year",
-        "Sales_Month",
-    ]
+Params = __Literal[
+    "Location_Type",
+    "Level_2_Area",
+    "Level_3_Area",
+    "Brand",
+    "Product_Focus",
+    "Industry_Level_2",
+    "Sales_Year",
+    "Sales_Month",
+    "Location_Type",
 ]
 
 
-def __get_pipeline(key: Params):
+def __get_pipeline(key: List[Params]):
     dict_list = {}
     dict_list_projection = {}
     for i in key:
@@ -31,7 +31,6 @@ def __get_pipeline(key: Params):
     return [
         {
             "$match": {
-                "Level_1_Area": "Kuwait",
                 "$or": [
                     {
                         "Weekday_Store_Sales": {"$ne": None},
@@ -72,8 +71,9 @@ def __get_pipeline(key: Params):
     ]
 
 
-def __query(key: Params):
-    averages = list(__new_sales_collection.aggregate(__get_pipeline(key)))
+def __query(key: List[Params]):
+    pipeline = __get_pipeline(key)
+    averages = list(__new_sales_collection.aggregate(pipeline))
     return __Dex(
         averages,
         [
@@ -86,13 +86,14 @@ def __query(key: Params):
 
 def __fill(
     dex: __Dex,
-    key: Params,
+    key: List[Params],
+    country: list[__Literal["Kuwait", "Bahrain", "Qatar"]],
 ):
     count = 0
     for i in __new_sales_collection.find(
         {
+            "Level_1_Area": {"$in": country},
             "Monthly_Sales": None,
-            "Level_1_Area": "Kuwait",
         }
     ):
         year = i["Sales_Year"]
@@ -102,13 +103,13 @@ def __fill(
         dict_list = {}
         for j in key:
             dict_list[j] = i[j]
+
         found_averages = dex[
             {
                 **dict_list,
             }
         ]
-
-        data = [i for i in found_averages if i["Weekday_Store_Sales"] != None]
+        data = found_averages
         if len(data) != 0:
             count += 1
             tmp = data[0]
@@ -120,7 +121,7 @@ def __fill(
             weekend_store_sales = tmp["Weekend_Store_Sales"]
             weekend_delivery_sales = tmp["Weekend_Delivery_Sales"]
             try:
-                __new_sales_update_single_record(
+                y = __new_sales_update_single_record(
                     i["Reference_Full_ID"],
                     year,
                     month,
@@ -136,9 +137,12 @@ def __fill(
             except Exception as e:
                 print(e)
                 pass
-    print(count)
 
 
-def fill_sales_with_averages(key: Params):
+def fill_sales_with_averages(
+    key: List[Params],
+    country: list[__Literal["Kuwait", "Bahrain", "Qatar"]],
+):
+    print({"key": key, "country": country})
     dex = __query(key)
-    __fill(dex, key)
+    __fill(dex, key, country)

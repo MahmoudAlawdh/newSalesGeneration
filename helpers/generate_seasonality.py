@@ -1,8 +1,10 @@
 from datetime import datetime
+from typing import Literal
 
 import numpy as np
 import pandas as pd
 from dateutil.relativedelta import relativedelta
+from sqlalchemy import literal
 
 from config import YEAR
 from db.helpers import new_sales_collection
@@ -24,12 +26,14 @@ def __calculate_growth(value1, value2):
         return growth
 
 
-def __group_sales(group_id, match):
+def __group_sales(
+    group_id, match, country: list[Literal["Kuwait", "Bahrain", "Qatar"]]
+):
     pipeline = [
         {
             "$match": {
                 **match,
-                "Level_1_Area": "Kuwait",
+                "Level_1_Area": {"$in": country},
                 "Monthly_Sales": {"$nin": [None, 0]},
                 "Source": {"$ne": "Algorithm"},
             }
@@ -90,7 +94,9 @@ def __filter_sales(data: list, date_1: datetime, date_2: datetime):
     ]
 
 
-def generate_location_type_seasonality():
+def generate_location_type_seasonality(
+    country: list[Literal["Kuwait", "Bahrain", "Qatar"]]
+):
     location_types = new_sales_collection.distinct(
         "Location_Type", {"Location_Type": {"$ne": 0}}
     )
@@ -109,6 +115,7 @@ def generate_location_type_seasonality():
                             "Sales_Month": {"$in": [date.month, last_month.month]},
                             "Sales_Year": {"$in": [date.year, last_month.year]},
                         },
+                        country,
                     )
                 ),
                 date,
@@ -136,6 +143,7 @@ def generate_location_type_seasonality():
                                     "$in": [current_date.year, last_month.year]
                                 },
                             },
+                            country,
                         )
                     ),
                     current_date,
@@ -158,7 +166,9 @@ def generate_location_type_seasonality():
     return location_type_df
 
 
-def generate_product_type_seasonality():
+def generate_product_type_seasonality(
+    country: list[Literal["Kuwait", "Bahrain", "Qatar"]]
+):
     products_types = new_sales_collection.distinct(
         "Product_Focus", {"Level_1_Area": "Kuwait", "Product_Focus": {"$ne": 0}}
     )
@@ -176,6 +186,7 @@ def generate_product_type_seasonality():
                             "Sales_Month": {"$in": [date.month, last_month.month]},
                             "Sales_Year": {"$in": [date.year, last_month.year]},
                         },
+                        country,
                     )
                 ),
                 date,
@@ -203,6 +214,7 @@ def generate_product_type_seasonality():
                                     "$in": [current_date.year, last_month.year]
                                 },
                             },
+                            country,
                         )
                     ),
                     current_date,
@@ -226,7 +238,7 @@ def generate_product_type_seasonality():
     return product_focus_df
 
 
-def area_seasonality():
+def area_seasonality(country: list[Literal["Kuwait", "Bahrain", "Qatar"]]):
     areas = new_sales_collection.distinct("Level_3_Area", {"Level_1_Area": "Kuwait"})
     _id = {"Level_3_Area": "$Level_3_Area"}
     result = []
@@ -242,6 +254,7 @@ def area_seasonality():
                             "Sales_Month": {"$in": [date.month, last_month.month]},
                             "Sales_Year": {"$in": [date.year, last_month.year]},
                         },
+                        country,
                     )
                 ),
                 date,
@@ -272,6 +285,7 @@ def area_seasonality():
                                     "$in": [current_date.year, last_month.year]
                                 },
                             },
+                            country,
                         )
                     ),
                     current_date,
@@ -295,7 +309,7 @@ def area_seasonality():
     return area_df
 
 
-def industry_seasonality():
+def industry_seasonality(country: list[Literal["Kuwait", "Bahrain", "Qatar"]]):
     industry = new_sales_collection.distinct(
         "Industry_Level_2", {"Level_1_Area": "Kuwait", "Industry_Level_2": {"$ne": 0}}
     )
@@ -361,6 +375,7 @@ def industry_seasonality():
                             "Sales_Month": {"$in": [date.month, last_month.month]},
                             "Sales_Year": {"$in": [date.year, last_month.year]},
                         },
+                        country,
                     )
                 ),
                 date,
