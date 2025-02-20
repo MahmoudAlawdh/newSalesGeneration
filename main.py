@@ -9,11 +9,12 @@ from interpolate import fill_gaps, prophet_forcast
 from setup import setup_sales
 
 warnings.filterwarnings("ignore")
+from helpers.types import CountryList
 
 
-def step_1_setup(country: list[Literal["Kuwait", "Bahrain", "Qatar"]]):
+def step_1_setup(country: CountryList):
     setup_sales(country)
-    __generate_all_sales_records(country)
+    # __generate_all_sales_records(country)
 
 
 def step_2_fill_gaps():
@@ -21,7 +22,7 @@ def step_2_fill_gaps():
     fill_gaps()
 
 
-def step_3_averages(country: list[Literal["Kuwait", "Bahrain", "Qatar"]]):
+def step_3_averages(country: CountryList):
     print("step 3")
     c: List[List[Params]] = [
         [
@@ -49,8 +50,10 @@ def step_3_averages(country: list[Literal["Kuwait", "Bahrain", "Qatar"]]):
     for i in c:
         q: List[Params] = i.copy()
         w: List[Params] = i.copy()
+        y: List[Params] = i.copy()
         q.append("Level_2_Area")
         w.append("Level_3_Area")
+        # y.append("Level_1_Area")
         fill_sales_with_averages(
             q,
             country,
@@ -59,23 +62,39 @@ def step_3_averages(country: list[Literal["Kuwait", "Bahrain", "Qatar"]]):
             w,
             country,
         )
+        fill_sales_with_averages(
+            y,
+            country,
+        )
 
     columns: List[Params] = [
-        "Location_Type",
-        "Level_2_Area",
-        "Level_3_Area",
         "Brand",
         "Product_Focus",
-        "Industry_Level_2",
         "Location_Type",
+        "Industry_Level_2",
     ]
     for i in columns:
+        l: List[Params] = [
+            i,
+            "Sales_Year",
+            "Sales_Month",
+        ]
+        q: List[Params] = l.copy()
+        w: List[Params] = l.copy()
+        y: List[Params] = l.copy()
+        q.append("Level_2_Area")
+        w.append("Level_3_Area")
+        # y.append("Level_1_Area")
         fill_sales_with_averages(
-            [
-                i,
-                "Sales_Year",
-                "Sales_Month",
-            ],
+            q,
+            country,
+        )
+        fill_sales_with_averages(
+            w,
+            country,
+        )
+        fill_sales_with_averages(
+            y,
             country,
         )
 
@@ -89,30 +108,37 @@ def step_4_seasonality(mode: list[Literal["Forward", "Backward"]]):
             [{"$group": {"_id": "$Reference_Full_ID", "fieldN": {"$push": "$$ROOT"}}}]
         )
     )
-    if "Forward" in mode:
+    for m in mode:
         count = 0
         for i in query:
             count += 1
             print(count, len(query))
-            fill(i["fieldN"], "Forward")
-    if "Backward" in mode:
-        count = 0
-        for i in query:
-            count += 1
-            print(count, len(query))
-            fill(i["fieldN"], "Backward")
+            c = sum(1 for record in i["fieldN"] if record["Monthly_Sales"] is not None)
+            if c >= 10 and c < 120:
+                fill(i["fieldN"], m, True)
 
 
 if __name__ == "__main__":
     """
     Loop through all the ids, find all close sales, with the same industry and location type with x distance
     """
-    # step_1_setup(["Qatar", "Bahrain"])
+    countries: CountryList = [
+        "Kuwait",
+        # "Bahrain",
+        # "Qatar",
+        # "Saudi Arabia",
+        # "United Arab Emirates",
+        # "Oman",
+        # "United Kingdom",
+    ]
+    step_1_setup(countries)
     step_2_fill_gaps()
     step_4_seasonality(["Backward"])
     step_2_fill_gaps()
     step_4_seasonality(["Forward", "Backward"])
-    step_3_averages(["Bahrain", "Qatar"])
+    step_3_averages(countries)
     step_4_seasonality(["Forward", "Backward"])
     step_2_fill_gaps()
     # prophet_forcast()
+
+# 12086

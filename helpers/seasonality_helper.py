@@ -40,9 +40,9 @@ def __get_single_seasonality(df: list[pd.DataFrame], key):
 
 def __get_seasonalities(year, month, location_type, industry, product_focus, area):
     location_seasonality = __filter_df(
-        location_type_df, year, month, "location_type", location_type
+        location_type_df, year, month, "Location_Type", location_type
     )
-    industry_seasonality = __filter_df(industry_df, year, month, "industry", industry)
+    industry_seasonality = __filter_df(industry_df, year, month, "Industry", industry)
     product_seasonality = __filter_df(
         product_focus_df, year, month, "product_focus", product_focus
     )
@@ -240,7 +240,9 @@ def f(df: pd.DataFrame):
     return df
 
 
-def get_seasonalities(mode: Literal["Forward", "Backward"]):
+def get_seasonalities(
+    mode: Literal["Forward", "Backward"],
+):
     if mode == "Forward":
         return area_df, industry_df, location_type_df, product_focus_df
     if mode == "Backward":
@@ -252,11 +254,13 @@ def get_seasonalities(mode: Literal["Forward", "Backward"]):
         )
 
 
-def fill(data, mode: Literal["Forward", "Backward"]):
+def fill(data, mode: Literal["Forward", "Backward"], generated: bool):
     if len(data) == 0:
         return None
     df = pd.DataFrame(data)
-    (area_df, industry_df, location_type_df, product_focus_df) = get_seasonalities(mode)
+    (area_df, industry_df, location_type_df, product_focus_df) = get_seasonalities(
+        mode,
+    )
     df = setup_seasonalities(
         df, area_df, industry_df, location_type_df, product_focus_df
     )

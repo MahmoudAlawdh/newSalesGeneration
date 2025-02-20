@@ -9,6 +9,7 @@ from sqlalchemy import literal
 from config import YEAR
 from db.helpers import new_sales_collection
 from helpers.tables import area_table, industry_table
+from main import CountryList
 
 __keys = [
     "Weekday_Store_Sales",
@@ -27,7 +28,9 @@ def __calculate_growth(value1, value2):
 
 
 def __group_sales(
-    group_id, match, country: list[Literal["Kuwait", "Bahrain", "Qatar"]]
+    group_id,
+    match,
+    country: CountryList,
 ):
     pipeline = [
         {
@@ -94,9 +97,7 @@ def __filter_sales(data: list, date_1: datetime, date_2: datetime):
     ]
 
 
-def generate_location_type_seasonality(
-    country: list[Literal["Kuwait", "Bahrain", "Qatar"]]
-):
+def generate_location_type_seasonality(country: CountryList):
     location_types = new_sales_collection.distinct(
         "Location_Type", {"Location_Type": {"$ne": 0}}
     )
@@ -166,9 +167,7 @@ def generate_location_type_seasonality(
     return location_type_df
 
 
-def generate_product_type_seasonality(
-    country: list[Literal["Kuwait", "Bahrain", "Qatar"]]
-):
+def generate_product_type_seasonality(country: CountryList):
     products_types = new_sales_collection.distinct(
         "Product_Focus", {"Level_1_Area": "Kuwait", "Product_Focus": {"$ne": 0}}
     )
@@ -238,7 +237,7 @@ def generate_product_type_seasonality(
     return product_focus_df
 
 
-def area_seasonality(country: list[Literal["Kuwait", "Bahrain", "Qatar"]]):
+def area_seasonality(country: CountryList):
     areas = new_sales_collection.distinct("Level_3_Area", {"Level_1_Area": "Kuwait"})
     _id = {"Level_3_Area": "$Level_3_Area"}
     result = []
@@ -309,7 +308,7 @@ def area_seasonality(country: list[Literal["Kuwait", "Bahrain", "Qatar"]]):
     return area_df
 
 
-def industry_seasonality(country: list[Literal["Kuwait", "Bahrain", "Qatar"]]):
+def industry_seasonality(country: CountryList):
     industry = new_sales_collection.distinct(
         "Industry_Level_2", {"Level_1_Area": "Kuwait", "Industry_Level_2": {"$ne": 0}}
     )

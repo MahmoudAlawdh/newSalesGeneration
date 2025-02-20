@@ -15,11 +15,10 @@ from db.queries import (
 from db.queries import new_sales_find_primary_id as __new_sales_find_primary_id
 from db.queries import new_sales_insert as __new_sales_insert
 from helpers.dates import get_last_day_of_the_month, get_list_of_sales_period
+from helpers.types import CountryList
 
 
-def get_sales_primary_id_and_reference_ids_set(
-    country: list[Literal["Kuwait", "Bahrain", "Qatar"]]
-):
+def get_sales_primary_id_and_reference_ids_set(country: CountryList):
     print("Getting Sales Primary ID and Reference IDs Set")
     primary_id: int = 0
     reference_ids_set = set()
@@ -35,7 +34,7 @@ def get_sales_primary_id_and_reference_ids_set(
     return primary_id, reference_ids_set
 
 
-def copy_sales(country: list[Literal["Kuwait", "Bahrain", "Qatar"]]):
+def copy_sales(country: CountryList):
     print("Copying Sales")
     records = []
     for i in __gm_sales_find(country):
@@ -43,14 +42,18 @@ def copy_sales(country: list[Literal["Kuwait", "Bahrain", "Qatar"]]):
         industry_level_2 = i["Industry_Level_2"]
         product_focus = i["Product_Focus"]
         brand = str(i["Brand"])
+        sales_period = get_last_day_of_the_month(i["Sales_Period"])
         records.append(
             {
                 **i,
                 "Brand": brand,
-                "Sales_Period": get_last_day_of_the_month(i["Sales_Period"]),
+                "Sales_Period": sales_period,
+                "Sales_Month": sales_period.month,
+                "Sales_Year": sales_period.year,
                 "Location_Type": location_type if location_type != 0 else None,
                 "Industry_Level_2": industry_level_2 if industry_level_2 != 0 else None,
                 "Product_Focus": product_focus if product_focus != 0 else None,
+                "original": True,
             }
         )
     __new_sales_insert(records)
@@ -117,25 +120,45 @@ def __generate_record(primary_id: int, i: dict, sales_period: __datetime):
         "Researcher": "Mahmoud",
         "Sales_Month": sales_period.month,
         "Sales_Year": sales_period.year,
+        "original": False,
     }
 
 
-def generate_all_sales_records(country: list[Literal["Kuwait", "Bahrain", "Qatar"]]):
+def fix_year(year: int):
+    if year > 2025:
+        return 2025
+    return year
+
+
+def fix_month(month: int):
+    if not month or month > 12 or month == 0:
+        return 12
+    return month
+
+
+def fix_day(day: int):
+    if not day or day > 28 or day == 0:
+        return 1
+    return day
+
+
+def generate_all_sales_records(country: CountryList):
     print("Generating all sales Records")
     primary_id, reference_ids_set = get_sales_primary_id_and_reference_ids_set(country)
     current_year = __datetime.now().year
+    current_month = __datetime.now().month
     records = []
     count = 0
-    for i in __gm_stores_find(["Bahrain", "Qatar"]):
+    for i in __gm_stores_find(country):
         reference_full_id = f'{i.get("Reference_Sheet")} {i["Reference_ID"]}'
         # if reference_full_id in reference_ids_set:
         #     continue
-        closing_year = i.get("Store_Closing_Year", 2025)
-        closing_month = i.get("Store_Closing_Month", 12)
-        closing_day = i.get("Store_Closing_Day", 1)
-        opening_year = i.get("Store_Opening_Year", YEAR)
-        opening_month = i.get("Store_Opening_Month", 1)
-        opening_day = i.get("Store_Opening_Day", 1)
+        closing_year = fix_year(int(i.get("Store_Closing_Year", current_year)))
+        closing_month = fix_month(int(i.get("Store_Closing_Month", 12)))
+        closing_day = fix_day(int(i.get("Store_Closing_Day", 1)))
+        opening_year = fix_year(int(i.get("Store_Opening_Year", YEAR)))
+        opening_month = fix_month(int(i.get("Store_Opening_Month", 1)))
+        opening_day = fix_day(int(i.get("Store_Opening_Day", 1)))
         sales_periods = get_list_of_sales_period(
             __datetime(
                 int(opening_year if opening_year != 0 else YEAR),
@@ -144,7 +167,7 @@ def generate_all_sales_records(country: list[Literal["Kuwait", "Bahrain", "Qatar
             ),
             __datetime(
                 int(closing_year if closing_year != 0 else current_year),
-                int(closing_month if closing_month != 0 else 12),
+                int(closing_month if closing_month != 0 else current_month),
                 int(closing_day if closing_day != 0 else 1),
             ),
         )
@@ -169,7 +192,7 @@ def __opening_date(i: dict):
             year = YEAR
         if month == 0:
             month = 1
-        if day == 0:
+        if day == 0 or day >= 31:
             day = 1
         return int(year), int(month), int(day)
 
@@ -193,11 +216,11 @@ def __closing_date(i):
     current_year = __datetime.now().year
 
     def __check_date(year, month, day):
-        if year == 0:
+        if year == 0 or year > 2025:
             year = current_year
         if month == 0:
             month = current_month
-        if day == 0:
+        if day == 0 or day >= 31:
             day = 1
         if month == 2 and day > 28:
             day = 28
@@ -218,7 +241,7 @@ def __closing_date(i):
     return __datetime(year, month, day)
 
 
-def fill_sales_gaps(country: list[Literal["Kuwait", "Bahrain", "Qatar"]]):
+def fill_sales_gaps(country: CountryList):
     print("Filling sales gaps")
     primary_id, reference_ids_set = get_sales_primary_id_and_reference_ids_set(country)
     records = []
@@ -236,6 +259,7 @@ def fill_sales_gaps(country: list[Literal["Kuwait", "Bahrain", "Qatar"]]):
         )
         for j in sales_periods:
             primary_id += 1
+            print("Records To Write", len(records))
             records.append(__generate_record(primary_id, sample_sales, j))
             if len(records) > 1_000_000:
                 count += len(records)

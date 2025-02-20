@@ -8,9 +8,11 @@ from db.helpers import new_sales_collection as __new_sales_collection
 from db.queries import (
     new_sales_update_single_record as __new_sales_update_single_record,
 )
+from helpers.types import CountryList
 
 Params = __Literal[
     "Location_Type",
+    "Level_1_Area",
     "Level_2_Area",
     "Level_3_Area",
     "Brand",
@@ -73,6 +75,7 @@ def __get_pipeline(key: List[Params]):
 
 def __query(key: List[Params]):
     pipeline = __get_pipeline(key)
+    print(pipeline)
     averages = list(__new_sales_collection.aggregate(pipeline))
     return __Dex(
         averages,
@@ -87,7 +90,7 @@ def __query(key: List[Params]):
 def __fill(
     dex: __Dex,
     key: List[Params],
-    country: list[__Literal["Kuwait", "Bahrain", "Qatar"]],
+    country: CountryList,
 ):
     count = 0
     for i in __new_sales_collection.find(
@@ -141,7 +144,7 @@ def __fill(
 
 def fill_sales_with_averages(
     key: List[Params],
-    country: list[__Literal["Kuwait", "Bahrain", "Qatar"]],
+    country: CountryList,
 ):
     print({"key": key, "country": country})
     dex = __query(key)

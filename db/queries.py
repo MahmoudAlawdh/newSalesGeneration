@@ -8,18 +8,20 @@ from config import YEAR
 from db.helpers import gm_sales_collection as __gm_sales_collection
 from db.helpers import gm_stores_collection as __gm_stores_collection
 from db.helpers import new_sales_collection as __new_sales_collection
+from helpers.types import CountryList
 
 
-def gm_stores_find(country: list[Literal["Kuwait", "Bahrain", "Qatar"]]):
+def gm_stores_find(country: CountryList):
     return __gm_stores_collection.find({"Level_1_Area": {"$in": country}})
 
 
-def gm_sales_find(country: list[Literal["Kuwait", "Bahrain", "Qatar"]]):
+def gm_sales_find(country: CountryList):
     return __gm_sales_collection.find(
         {
             "Level_1_Area": {"$in": country},
             "Monthly_Sales": {"$nin": [0, None]},
-            "Source": {"$nin": ["Algorithm", "Estimate"]},
+            "Sales_Period": {"$ne": None},
+            # "Source": {"$nin": ["Algorithm", "Estimate"]},
         }
     )
 
@@ -32,7 +34,7 @@ def new_sales_delete():
     return __new_sales_collection.delete_many({})
 
 
-def new_sales_find(country: list[Literal["Kuwait", "Bahrain", "Qatar"]]):
+def new_sales_find(country: CountryList):
     if country is None:
         return __new_sales_collection.find()
     return __new_sales_collection.find({"Level_1_Area": {"$in": country}})
@@ -45,7 +47,7 @@ def new_sales_find_by_country_and_reference_full_id(
         {
             "Reference_Full_ID": reference_full_id,
         }
-    )
+    ).limit(1)
 
 
 def new_sales_insert(records):
