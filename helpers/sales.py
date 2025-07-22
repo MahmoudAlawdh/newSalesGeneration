@@ -41,11 +41,13 @@ def copy_sales(country: CountryList):
         location_type = i["Location_Type"]
         industry_level_2 = i["Industry_Level_2"]
         product_focus = i["Product_Focus"]
-        brand = str(i["Brand"])
+        brand = str(i["Brand"]).strip()
+        company_name = str(i["Company_Name"]).strip()
         sales_period = get_last_day_of_the_month(i["Sales_Period"])
         records.append(
             {
                 **i,
+                "Company_Name": company_name,
                 "Brand": brand,
                 "Sales_Period": sales_period,
                 "Sales_Month": sales_period.month,

@@ -122,6 +122,7 @@ def setup_seasonalities(
         on=["Product_Focus", "Sales_Year", "Sales_Month"],
         suffixes=("", "_product_focus"),
     )
+
     df["weekday_store_sales_seasonality"] = (
         df.loc[:, "Weekday_Store_Sales_area"].replace(np.nan, 0)
         + df.loc[:, "Weekday_Store_Sales_industry"].replace(np.nan, 0)
@@ -147,6 +148,7 @@ def setup_seasonalities(
         + df.loc[:, "Weekend_Delivery_Sales_product_focus"].replace(np.nan, 0)
         + df.loc[:, "Weekend_Delivery_Sales_location_type"].replace(np.nan, 0)
     ) / 4
+
     df.drop(
         [
             "Weekday_Store_Sales_area",
@@ -172,7 +174,9 @@ def setup_seasonalities(
         axis=1,
         inplace=True,
     )
+
     df = df.replace(0, np.nan)
+
     return df
 
 
@@ -211,7 +215,7 @@ def update_records(df: pd.DataFrame):
     return df
 
 
-def f(df: pd.DataFrame):
+def f(df: pd.DataFrame, tolerance: float = 0.2):
     sales_cols = [
         "Weekday_Store_Sales",
         "Weekday_Delivery_Sales",
@@ -224,19 +228,33 @@ def f(df: pd.DataFrame):
         "weekend_store_sales_seasonality",
         "weekend_delivery_sales_seasonality",
     ]
+    shifted_sales = df[sales_cols].shift()
+    mask = (
+        df["Monthly_Sales"].isna()
+        & (df["Source"] == "Generated")
+        & shifted_sales.notna().any(axis=1)
+    )
 
-    for _ in range(len(df[df["Monthly_Sales"].isna()])):
-        mask = (
-            df["Monthly_Sales"].isna()
-            & (df["Source"] == "Generated")
-            & df[sales_cols].shift().notna().any(axis=1)
+    for sales_col, seasonality_col in zip(sales_cols, seasonality_cols):
+        valid = mask & shifted_sales[sales_col].notna() & df[seasonality_col].notna()
+        df.loc[valid, sales_col] = shifted_sales.loc[valid, sales_col] * (
+            1 + df.loc[valid, seasonality_col]
         )
-        for sales_col, seasonality_col in zip(sales_cols, seasonality_cols):
-            df.loc[mask, sales_col] = df[sales_col].shift() * (
-                1 + df.loc[mask, seasonality_col]
-            )
-            df.loc[mask, "changed"] = True
+    df.loc[mask, "changed"] = True
 
+    for col in sales_cols:
+        # baseline mean (only original/non-generated data)
+        baseline_mean = df.loc[df["Source"] != "Generated", col].mean()
+        # mask of generated rows that are now present AND too-far from mean
+        outlier_mask = (
+            (df["Source"] == "Generated")
+            & df[col].notna()
+            & (df[col].sub(baseline_mean).abs() > tolerance * baseline_mean)
+        )
+        # clear them
+        df.loc[outlier_mask, col] = np.nan
+        # optionally, reset your flag
+        df.loc[outlier_mask, "changed"] = False
     return df
 
 
@@ -254,23 +272,52 @@ def get_seasonalities(
         )
 
 
-def fill(data, mode: Literal["Forward", "Backward"], generated: bool):
+(
+    seasonality_area_df,
+    seasonality_industry_df,
+    seasonality_location_type_df,
+    seasonality_product_focus_df,
+) = get_seasonalities(
+    "Forward",
+)
+(
+    seasonality_backward_area_df,
+    seasonality_backward_industry_df,
+    seasonality_backward_location_type_df,
+    seasonality_backward_product_focus_df,
+) = get_seasonalities(
+    "Backward",
+)
+
+
+def fill(data, mode: Literal["Forward", "Backward"]):
     if len(data) == 0:
         return None
     df = pd.DataFrame(data)
-    (area_df, industry_df, location_type_df, product_focus_df) = get_seasonalities(
-        mode,
-    )
-    df = setup_seasonalities(
-        df, area_df, industry_df, location_type_df, product_focus_df
-    )
-    #
+
+    if mode == "Forward":
+        df = setup_seasonalities(
+            df,
+            seasonality_area_df,
+            seasonality_industry_df,
+            seasonality_location_type_df,
+            seasonality_product_focus_df,
+        )
+    else:
+        df = setup_seasonalities(
+            df,
+            seasonality_backward_area_df,
+            seasonality_backward_industry_df,
+            seasonality_backward_location_type_df,
+            seasonality_backward_product_focus_df,
+        )
     if mode == "Forward":
         df = df.groupby("Reference_Full_ID").apply(f)
     if mode == "Backward":
         df = df.iloc[::-1]
         df = df.groupby("Reference_Full_ID").apply(f)
         df = df.iloc[::-1]
+
     #
     df.drop(
         [
