@@ -1,5 +1,5 @@
 from calendar import weekday
-from typing import Literal
+from typing import Any, Dict, Literal, Optional
 
 from pandas import isna
 from pymongo import UpdateOne
@@ -11,8 +11,11 @@ from db.helpers import new_sales_collection as __new_sales_collection
 from helpers.types import CountryList
 
 
-def gm_stores_find(country: CountryList):
-    return __gm_stores_collection.find({"Level_1_Area": {"$in": country}})
+def gm_stores_find(country: CountryList, brand: Optional[list[str]] = None):
+    pipeline: Dict[str, Any] = {"Level_1_Area": {"$in": country}}
+    if brand:
+        pipeline["Brand"] = {"$in": brand}
+    return __gm_stores_collection.find(pipeline)
 
 
 def gm_sales_find(country: CountryList):

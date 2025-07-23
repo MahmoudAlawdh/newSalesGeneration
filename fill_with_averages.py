@@ -1,3 +1,4 @@
+import time
 from typing import List
 from typing import Literal as __Literal
 from typing import Optional as __Optional
@@ -76,7 +77,10 @@ def __get_pipeline(key: List[Params]):
 def __query(key: List[Params]):
     pipeline = __get_pipeline(key)
     print(pipeline)
+    start = time.time()
     averages = list(__new_sales_collection.aggregate(pipeline))
+    end = time.time()
+    print(f"_query Execution time: {end - start:.4f} seconds")
     return __Dex(
         averages,
         [

@@ -16,7 +16,24 @@ from helpers.types import CountryList
 
 def step_1_setup(country: CountryList):
     setup_sales(country)
-    __generate_all_sales_records(country)
+    __generate_all_sales_records(
+        country,
+        [
+            "ananas",
+            "BARTONE",
+            "BT by BARTONE",
+            "Caribou",
+            "GOOD DAY",
+            "Joe & The Juice",
+            "Pick",
+            "Starbucks",
+            "Starbucks Reserve",
+            "Starbucks Reserve Bar",
+            "The Coffee Bean & Tea Leaf",
+            "Mr. Holmes",
+            "Pret A Manager",
+        ],
+    )
 
 
 def step_2_fill_gaps():
@@ -59,19 +76,19 @@ def step_3_averages(country: CountryList):
         #     "Product_Focus",
         #     "Industry_Level_2",
         # ],
-        [
-            "Location_Type",
-            "Industry_Level_2",
-            "Product_Focus",
-        ],
-        [
-            "Location_Type",
-            "Industry_Level_2",
-        ],
-        [
-            "Product_Focus",
-            "Industry_Level_2",
-        ],
+        # [
+        #     "Location_Type",
+        #     "Industry_Level_2",
+        #     "Product_Focus",
+        # ],
+        # [
+        #     "Location_Type",
+        #     "Industry_Level_2",
+        # ],
+        # [
+        #     "Product_Focus",
+        #     "Industry_Level_2",
+        # ],
         ["Brand", "Level_1_Area"],
         ["Industry_Level_2", "Level_1_Area"],
         ["Product_Focus", "Level_1_Area"],
@@ -144,27 +161,27 @@ if __name__ == "__main__":
         # "United Kingdom",
     ]
     # step_1_setup(countries)
-    # step_2_fill_gaps()
-    # fill_averages(
-    #     countries,
-    #     [
-    #         [
-    #             "Location_Type",
-    #             "Brand",
-    #             "Product_Focus",
-    #             "Industry_Level_2",
-    #         ]
-    #     ],
-    # )
-    # step_2_fill_gaps()
+    step_2_fill_gaps()
+    fill_averages(
+        countries,
+        [
+            [
+                "Location_Type",
+                "Brand",
+                "Product_Focus",
+                "Industry_Level_2",
+            ]
+        ],
+    )
+    step_2_fill_gaps()
 
-    # step_4_seasonality(["Backward", "Forward"])
-    # step_2_fill_gaps()
+    step_4_seasonality(["Backward", "Forward"])
+    step_2_fill_gaps()
     step_3_averages(countries)
     step_4_seasonality(["Forward", "Backward"])
     #
     # delete_over_million_sales()
-    # #
+    # # #
     # step_2_fill_gaps()
     # step_4_seasonality(["Backward", "Forward"])
     # step_3_averages(countries)

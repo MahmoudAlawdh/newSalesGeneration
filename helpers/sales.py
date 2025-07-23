@@ -1,6 +1,6 @@
 import numbers
 from datetime import datetime as __datetime
-from typing import Literal
+from typing import Literal, Optional
 
 import pandas as __pd
 
@@ -144,14 +144,14 @@ def fix_day(day: int):
     return day
 
 
-def generate_all_sales_records(country: CountryList):
+def generate_all_sales_records(country: CountryList, brand: Optional[list[str]] = None):
     print("Generating all sales Records")
     primary_id, reference_ids_set = get_sales_primary_id_and_reference_ids_set(country)
     current_year = __datetime.now().year
     current_month = __datetime.now().month
     records = []
     count = 0
-    for i in __gm_stores_find(country):
+    for i in __gm_stores_find(country, brand):
         reference_full_id = f'{i.get("Reference_Sheet")} {i["Reference_ID"]}'
         # if reference_full_id in reference_ids_set:
         #     continue
