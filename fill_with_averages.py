@@ -1,4 +1,6 @@
+import random
 import time
+from math import isnan
 from typing import List
 from typing import Literal as __Literal
 from typing import Optional as __Optional
@@ -127,6 +129,22 @@ def __fill(
             weekday_delivery_sales = tmp["Weekday_Delivery_Sales"]
             weekend_store_sales = tmp["Weekend_Store_Sales"]
             weekend_delivery_sales = tmp["Weekend_Delivery_Sales"]
+            if weekday_store_sales is not None and not isnan(weekday_store_sales):
+                weekday_store_sales = int(
+                    weekday_store_sales * (1 + random.uniform(-0.06, 0.06))
+                )
+            if weekday_delivery_sales is not None and not isnan(weekday_delivery_sales):
+                weekday_delivery_sales = int(
+                    weekday_delivery_sales * (1 + random.uniform(-0.06, 0.06))
+                )
+            if weekend_store_sales is not None and not isnan(weekend_store_sales):
+                weekend_store_sales = int(
+                    weekend_store_sales * (1 + random.uniform(-0.06, 0.06))
+                )
+            if weekend_delivery_sales is not None and not isnan(weekend_delivery_sales):
+                weekend_delivery_sales = int(
+                    weekend_delivery_sales * (1 + random.uniform(-0.06, 0.06))
+                )
             try:
                 y = __new_sales_update_single_record(
                     i["Reference_Full_ID"],

@@ -111,6 +111,12 @@ def new_sales_refenrece_ids_with_sales_count():
     )
 
 
+def safe_to_int(value):
+    if value is None:
+        return None
+    return round(value)
+
+
 def fix_record(
     reference_full_id,
     year,
@@ -185,16 +191,16 @@ def fix_record(
         "industry": industry,
         "product_focus": product_focus,
         "area": area,
-        "weekday_store_sales": fix_none(weekday_store_sales),
-        "weekday_delivery_sales": fix_none(weekday_delivery_sales),
-        "weekend_store_sales": fix_none(weekend_store_sales),
-        "weekend_delivery_sales": fix_none(weekend_delivery_sales),
-        "weekday_total_sales": weekday_total_sales,
-        "weekend_total_sales": weekend_total_sales,
-        "monthly_store_sales": monthly_store_sales,
-        "monthly_delivery_sales": monthly_delivery_sales,
-        "monthly_sales": monthly_sales,
-        "delivery": delivery,
+        "weekday_store_sales": safe_to_int(fix_none(weekday_store_sales)),
+        "weekday_delivery_sales": safe_to_int(fix_none(weekday_delivery_sales)),
+        "weekend_store_sales": safe_to_int(fix_none(weekend_store_sales)),
+        "weekend_delivery_sales": safe_to_int(fix_none(weekend_delivery_sales)),
+        "weekday_total_sales": safe_to_int(weekday_total_sales),
+        "weekend_total_sales": safe_to_int(weekend_total_sales),
+        "monthly_store_sales": safe_to_int(monthly_store_sales),
+        "monthly_delivery_sales": safe_to_int(monthly_delivery_sales),
+        "monthly_sales": safe_to_int(monthly_sales),
+        "delivery": safe_to_int(delivery),
     }
 
 

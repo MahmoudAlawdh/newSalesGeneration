@@ -156,7 +156,7 @@ def generate_all_sales_records(country: CountryList, brand: Optional[list[str]] 
         # if reference_full_id in reference_ids_set:
         #     continue
         closing_year = fix_year(int(i.get("Store_Closing_Year", current_year)))
-        closing_month = fix_month(int(i.get("Store_Closing_Month", 12)))
+        closing_month = fix_month(int(i.get("Store_Closing_Month", current_month)))
         closing_day = fix_day(int(i.get("Store_Closing_Day", 1)))
         opening_year = fix_year(int(i.get("Store_Opening_Year", YEAR)))
         opening_month = fix_month(int(i.get("Store_Opening_Month", 1)))
