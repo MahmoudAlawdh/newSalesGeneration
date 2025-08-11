@@ -95,7 +95,7 @@ def __generate_record(primary_id: int, i: dict, sales_period: __datetime):
         "Area_ID": i["Area_ID"],
         "Latitude": i.get("Latitude"),
         "Longitude": i.get("Longitude"),
-        "Currency": "KWD",
+        "Currency": i.get("Currency"),
         "Weekday_Store_Sales": None,
         "Weekday_Delivery_Sales": None,
         "Weekday_Total_Sales": None,

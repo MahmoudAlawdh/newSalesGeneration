@@ -85,6 +85,7 @@ def fill_gaps():
                     weekday_delivery_sales,
                     weekend_store_sales,
                     weekend_delivery_sales,
+                    reason="Fill Gap",
                 )
                 if result != None:
                     count += 1

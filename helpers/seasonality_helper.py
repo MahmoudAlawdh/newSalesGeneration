@@ -209,6 +209,7 @@ def update_records(df: pd.DataFrame):
                 "weekday_delivery_sales": weekday_delivery_sales,
                 "weekend_store_sales": weekend_store_sales,
                 "weekend_delivery_sales": weekend_delivery_sales,
+                "reason": "Seasonality",
             }
         )
     new_sales_update_many_record(results)

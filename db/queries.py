@@ -129,6 +129,7 @@ def fix_record(
     weekday_delivery_sales: None | float,
     weekend_store_sales: None | float,
     weekend_delivery_sales: None | float,
+    reason: str,
 ):
     if (
         weekday_delivery_sales == None
@@ -183,6 +184,10 @@ def fix_record(
         or delivery < 0
     ):
         return None
+    if location_type in ["Education", "Government"]:
+        weekend_delivery_sales = None
+        weekend_store_sales = None
+        weekday_delivery_sales = None
     return {
         "reference_full_id": reference_full_id,
         "year": year,
@@ -201,7 +206,26 @@ def fix_record(
         "monthly_delivery_sales": safe_to_int(monthly_delivery_sales),
         "monthly_sales": safe_to_int(monthly_sales),
         "delivery": safe_to_int(delivery),
+        "reason": reason,
     }
+
+
+def reject_string(var: Any) -> Any:
+    """
+    Ensure the provided variable is not a string; otherwise, raise a TypeError.
+
+    Args:
+        var: Any value to check.
+
+    Returns:
+        The original variable if it is not a string.
+
+    Raises:
+        TypeError: If var is an instance of str.
+    """
+    if isinstance(var, str):
+        raise TypeError(f"Expected non-string type, but got string: {var!r}")
+    return var
 
 
 def new_sales_update_single_record(
@@ -216,7 +240,13 @@ def new_sales_update_single_record(
     weekday_delivery_sales: None | float,
     weekend_store_sales: None | float,
     weekend_delivery_sales: None | float,
+    reason,
 ):
+
+    reject_string(weekday_store_sales)
+    reject_string(weekday_delivery_sales)
+    reject_string(weekend_store_sales)
+    reject_string(weekend_delivery_sales)
     x = fix_record(
         reference_full_id,
         year,
@@ -229,6 +259,7 @@ def new_sales_update_single_record(
         weekday_delivery_sales,
         weekend_store_sales,
         weekend_delivery_sales,
+        reason,
     )
     if not x:
         return None
@@ -253,6 +284,7 @@ def new_sales_update_single_record(
                 "Monthly_Delivery_Sales": x["monthly_delivery_sales"],
                 "Monthly_Sales": x["monthly_sales"],
                 "Delivery_%": x["delivery"],
+                "reason": reason,
             }
         },
     )
@@ -272,6 +304,7 @@ def new_sales_update_many_record(data: list[dict]):
             i["weekday_delivery_sales"],
             i["weekend_store_sales"],
             i["weekend_delivery_sales"],
+            "Seasonality",
         )
         for i in data
     ]
@@ -305,6 +338,7 @@ def new_sales_update_many_record(data: list[dict]):
                         "Monthly_Delivery_Sales": i["monthly_delivery_sales"],
                         "Monthly_Sales": i["monthly_sales"],
                         "Delivery_%": i["delivery"],
+                        "reason": i["reason"],
                     },
                 },
             )
