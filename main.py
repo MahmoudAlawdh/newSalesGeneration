@@ -44,7 +44,7 @@ KSA = [
 
 def step_1_setup(country: CountryList):
     setup_sales(country)
-    __generate_all_sales_records(country, KSA)
+    __generate_all_sales_records(country, Kuwait)
     for i in ["Level_2_Area", "Level_3_Area", "Brand"]:
         new_sales_collection.update_many(
             {i: {"$type": "number"}}, [{"$set": {i: {"$toString": f"${i}"}}}]
@@ -223,15 +223,15 @@ def removing_bad_Sales():
 
 if __name__ == "__main__":
     countries: CountryList = [
-        # "Kuwait",
+        "Kuwait",
         # "Bahrain",
         # "Qatar",
-        "Saudi Arabia",
+        # "Saudi Arabia",
         # "United Arab Emirates",
         # "Oman",
         # "United Kingdom",
     ]
-    step_1_setup(countries)
+    # step_1_setup(countries)
     step_2_fill_gaps()
     fill_averages(
         countries,
