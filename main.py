@@ -232,22 +232,22 @@ if __name__ == "__main__":
         # "United Kingdom",
     ]
     # step_1_setup(countries)
-    step_2_fill_gaps()
-    fill_averages(
-        countries,
-        [
-            [
-                "Location_Type",
-                "Brand",
-                "Product_Focus",
-                "Industry_Level_2",
-            ]
-        ],
-    )
-    step_2_fill_gaps()
-    step_4_seasonality(["Backward", "Forward"])
-    step_2_fill_gaps()
-    step_3_averages(countries)
+    # step_2_fill_gaps()
+    # fill_averages(
+    #     countries,
+    #     [
+    #         [
+    #             "Location_Type",
+    #             "Brand",
+    #             "Product_Focus",
+    #             "Industry_Level_2",
+    #         ]
+    #     ],
+    # )
+    # step_2_fill_gaps()
+    # step_4_seasonality(["Backward", "Forward"])
+    # step_2_fill_gaps()
+    # step_3_averages(countries)
     #
     # removing_bad_Sales()
     # # #
@@ -255,4 +255,4 @@ if __name__ == "__main__":
     # step_4_seasonality(["Backward", "Forward"])
     # step_3_averages(countries)
     # step_4_seasonality(["Forward", "Backward"])
-    # prophet_forcast()
+    prophet_forcast(Kuwait)
