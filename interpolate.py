@@ -53,14 +53,18 @@ def fill_gaps():
                 }
             ).sort("Sales_Period")
         )
+
         check = any(check_values_is_None(record) for record in sales[1:])
         if not check:
             continue
         if not sales:
             continue
         df = __pd.DataFrame(sales)
+
         interpolation_keys = list(set(df.columns) & set(keys))
         df[interpolation_keys] = df[interpolation_keys].interpolate(limit_area="inside")
+        if i["_id"] == "Foodservice 172215":
+            print(df[keys])
         for row in df.itertuples(index=False):
             try:
                 weekday_store_sales = getattr(row, "Weekday_Store_Sales", None)

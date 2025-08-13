@@ -242,7 +242,6 @@ def new_sales_update_single_record(
     weekend_delivery_sales: None | float,
     reason,
 ):
-
     reject_string(weekday_store_sales)
     reject_string(weekday_delivery_sales)
     reject_string(weekend_store_sales)
@@ -263,6 +262,7 @@ def new_sales_update_single_record(
     )
     if not x:
         return None
+
     return __new_sales_collection.update_one(
         {
             "Source": "Generated",
@@ -271,6 +271,7 @@ def new_sales_update_single_record(
             "Reference_Full_ID": reference_full_id,
             "Sales_Month": month,
             "Sales_Year": year,
+            "original": False,
         },
         {
             "$set": {

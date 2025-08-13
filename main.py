@@ -13,12 +13,38 @@ from setup import setup_sales
 warnings.filterwarnings("ignore")
 from helpers.types import CountryList
 
+Kuwait = [
+    "ananas",
+    "BARTONE",
+    "BT by BARTONE",
+    "Caribou",
+    "GOOD DAY",
+    "Joe & The Juice",
+    "Pick",
+    "Starbucks",
+    "Starbucks Reserve",
+    "Starbucks Reserve Bar",
+    "The Coffee Bean & Tea Leaf",
+    "Mr. Holmes",
+    "Pret A Manager",
+]
+KSA = [
+    "ARCHI",
+    "Coffee Address",
+    "Half Million Coffee",
+    "Joe and the Juice",
+    "Pals",
+    "Pret A Manager",
+    "Section-B",
+    "Starbucks",
+    "Urth Caffe",
+    "ZED",
+]
+
 
 def step_1_setup(country: CountryList):
     setup_sales(country)
-    __generate_all_sales_records(
-        country,
-    )
+    __generate_all_sales_records(country, KSA)
     for i in ["Level_2_Area", "Level_3_Area", "Brand"]:
         new_sales_collection.update_many(
             {i: {"$type": "number"}}, [{"$set": {i: {"$toString": f"${i}"}}}]
@@ -30,7 +56,10 @@ def step_2_fill_gaps():
     fill_gaps()
 
 
-def fill_averages(country: CountryList, columns: list[list[Params]]):
+def fill_averages(
+    country: CountryList,
+    columns: list[list[Params]],
+):
     for i in columns:
         l: List[Params] = i + [
             "Sales_Year",
@@ -202,22 +231,22 @@ if __name__ == "__main__":
         # "Oman",
         # "United Kingdom",
     ]
-    # step_1_setup(countries)
-    # step_2_fill_gaps()
-    # fill_averages(
-    #     countries,
-    #     [
-    #         [
-    #             "Location_Type",
-    #             "Brand",
-    #             "Product_Focus",
-    #             "Industry_Level_2",
-    #         ]
-    #     ],
-    # )
-    # step_2_fill_gaps()
-    # step_4_seasonality(["Backward", "Forward"])
-    # step_2_fill_gaps()
+    step_1_setup(countries)
+    step_2_fill_gaps()
+    fill_averages(
+        countries,
+        [
+            [
+                "Location_Type",
+                "Brand",
+                "Product_Focus",
+                "Industry_Level_2",
+            ]
+        ],
+    )
+    step_2_fill_gaps()
+    step_4_seasonality(["Backward", "Forward"])
+    step_2_fill_gaps()
     step_3_averages(countries)
     #
     # removing_bad_Sales()
