@@ -148,7 +148,7 @@ def generate_all_sales_records(country: CountryList, brand: Optional[list[str]] 
     print("Generating all sales Records")
     primary_id, reference_ids_set = get_sales_primary_id_and_reference_ids_set(country)
     current_year = __datetime.now().year
-    current_month = 12  # __datetime.now().month
+    current_month = __datetime.now().month
     records = []
     count = 0
     for i in __gm_stores_find(country, brand):
@@ -214,7 +214,7 @@ def __opening_date(i: dict):
 
 
 def __closing_date(i):
-    current_month = 12  # __datetime.now().month
+    current_month = __datetime.now().month
     current_year = __datetime.now().year
 
     def __check_date(year, month, day):

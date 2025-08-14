@@ -129,80 +129,10 @@ def prophet_forcast(brands: list[str]):
                             "Reference_Full_ID": first["Reference_Full_ID"],
                             "Sales_Month": row["ds"].month,
                             "Sales_Year": row["ds"].year,
-                            f"{j}": None,
+                            "Monthly_Sales": None,
+                            # f"{j}": None,
                         },
-                        {"$set": {f"{j}": row["yhat"]}},
+                        {"$set": {f"{j}": round(row["yhat"])}},
                     )
         except:
             pass
-    __new_sales_collection.update_many(
-        {},
-        [
-            {
-                "$set": {
-                    "Weekday_Total_Sales": {
-                        "$add": [
-                            {"$ifNull": ["$Weekday_Delivery_Sales", 0]},
-                            {"$ifNull": ["$Weekday_Store_Sales", 0]},
-                        ]
-                    },
-                    "Weekend_Total_Sales": {
-                        "$add": [
-                            {"$ifNull": ["$Weekend_Delivery_Sales", 0]},
-                            {"$ifNull": ["$Weekend_Store_Sales", 0]},
-                        ]
-                    },
-                    "Monthly_Store_Sales": {
-                        "$add": [
-                            {
-                                "$multiply": [
-                                    {"$ifNull": ["$Weekday_Store_Sales", 0]},
-                                    20,
-                                ]
-                            },
-                            {
-                                "$multiply": [
-                                    {"$ifNull": ["$Weekend_Store_Sales", 0]},
-                                    8,
-                                ]
-                            },
-                        ]
-                    },
-                    "Monthly_Delivery_Sales": {
-                        "$add": [
-                            {
-                                "$multiply": [
-                                    {"$ifNull": ["$Weekday_Delivery_Sales", 0]},
-                                    20,
-                                ]
-                            },
-                            {
-                                "$multiply": [
-                                    {"$ifNull": ["$Weekend_Delivery_Sales", 0]},
-                                    8,
-                                ]
-                            },
-                        ]
-                    },
-                    "Monthly_Sales": {
-                        "$add": [
-                            {"$ifNull": ["$Monthly_Store_Sales", 0]},
-                            {"$ifNull": ["$Monthly_Delivery_Sales", 0]},
-                        ]
-                    },
-                    "Delivery_%": {
-                        "$cond": [
-                            {"$gt": [{"$ifNull": ["$Monthly_Sales", 0]}, 0]},
-                            {
-                                "$divide": [
-                                    {"$ifNull": ["$Monthly_Delivery_Sales", 0]},
-                                    {"$ifNull": ["$Monthly_Sales", 0]},
-                                ]
-                            },
-                            None,
-                        ]
-                    },
-                }
-            }
-        ],
-    )

@@ -85,29 +85,29 @@ def fill_averages(
 def step_3_averages(country: CountryList):
     print("step 3")
     c: List[List[Params]] = [
-        [
-            "Location_Type",
-            "Brand",
-            "Product_Focus",
-            "Industry_Level_2",
-        ],
-        [
-            "Location_Type",
-            "Industry_Level_2",
-            "Product_Focus",
-        ],
-        [
-            "Location_Type",
-            "Industry_Level_2",
-        ],
-        [
-            "Product_Focus",
-            "Industry_Level_2",
-        ],
-        ["Brand", "Level_1_Area"],
-        ["Industry_Level_2", "Level_1_Area"],
-        ["Product_Focus", "Level_1_Area"],
-        ["Brand"],
+        # [
+        #     "Location_Type",
+        #     "Brand",
+        #     "Product_Focus",
+        #     "Industry_Level_2",
+        # ],
+        # [
+        #     "Location_Type",
+        #     "Industry_Level_2",
+        #     "Product_Focus",
+        # ],
+        # [
+        #     "Location_Type",
+        #     "Industry_Level_2",
+        # ],
+        # [
+        #     "Product_Focus",
+        #     "Industry_Level_2",
+        # ],
+        # ["Brand", "Level_1_Area"],
+        # ["Industry_Level_2", "Level_1_Area"],
+        # ["Product_Focus", "Level_1_Area"],
+        # ["Brand"],
         ["Industry_Level_2"],
         ["Product_Focus"],
         ["Location_Type"],
@@ -221,12 +221,119 @@ def removing_bad_Sales():
         )
 
 
+def last_step():
+    new_sales_collection.update_many(
+        {"Location_Type": {"$in": ["Education", "Government"]}, "original": False},
+        [
+            {
+                "$set": {
+                    "Weekend_Delivery_Sales": 0,
+                    "Weekend_Store_Sales": 0,
+                    "Weekday_Delivery_Sales": 0,
+                }
+            }
+        ],
+    )
+    new_sales_collection.update_many(
+        {"original": False},
+        [
+            {
+                "$set": {
+                    "Weekday_Store_Sales": {
+                        "$toInt": {"$abs": {"$ifNull": ["$Weekday_Store_Sales", 0]}}
+                    },
+                    "Weekday_Delivery_Sales": {
+                        "$toInt": {"$abs": {"$ifNull": ["$Weekday_Delivery_Sales", 0]}}
+                    },
+                    "Weekend_Store_Sales": {
+                        "$toInt": {"$abs": {"$ifNull": ["$Weekend_Store_Sales", 0]}}
+                    },
+                    "Weekend_Delivery_Sales": {
+                        "$toInt": {"$abs": {"$ifNull": ["$Weekend_Delivery_Sales", 0]}}
+                    },
+                }
+            }
+        ],
+    )
+    new_sales_collection.update_many(
+        {"original": False},
+        [
+            {
+                "$set": {
+                    "Weekday_Total_Sales": {
+                        "$add": [
+                            {"$ifNull": ["$Weekday_Delivery_Sales", 0]},
+                            {"$ifNull": ["$Weekday_Store_Sales", 0]},
+                        ]
+                    },
+                    "Weekend_Total_Sales": {
+                        "$add": [
+                            {"$ifNull": ["$Weekend_Delivery_Sales", 0]},
+                            {"$ifNull": ["$Weekend_Store_Sales", 0]},
+                        ]
+                    },
+                    "Monthly_Store_Sales": {
+                        "$add": [
+                            {
+                                "$multiply": [
+                                    {"$ifNull": ["$Weekday_Store_Sales", 0]},
+                                    20,
+                                ]
+                            },
+                            {
+                                "$multiply": [
+                                    {"$ifNull": ["$Weekend_Store_Sales", 0]},
+                                    8,
+                                ]
+                            },
+                        ]
+                    },
+                    "Monthly_Delivery_Sales": {
+                        "$add": [
+                            {
+                                "$multiply": [
+                                    {"$ifNull": ["$Weekday_Delivery_Sales", 0]},
+                                    20,
+                                ]
+                            },
+                            {
+                                "$multiply": [
+                                    {"$ifNull": ["$Weekend_Delivery_Sales", 0]},
+                                    8,
+                                ]
+                            },
+                        ]
+                    },
+                    "Monthly_Sales": {
+                        "$add": [
+                            {"$ifNull": ["$Monthly_Store_Sales", 0]},
+                            {"$ifNull": ["$Monthly_Delivery_Sales", 0]},
+                        ]
+                    },
+                    "Delivery_%": {
+                        "$cond": [
+                            {"$gt": [{"$ifNull": ["$Monthly_Sales", 0]}, 0]},
+                            {
+                                "$divide": [
+                                    {"$ifNull": ["$Monthly_Delivery_Sales", 0]},
+                                    {"$ifNull": ["$Monthly_Sales", 0]},
+                                ]
+                            },
+                            None,
+                        ]
+                    },
+                }
+            }
+        ],
+    )
+
+
 if __name__ == "__main__":
     countries: CountryList = [
-        "Kuwait",
+        # "Kuwait",
         # "Bahrain",
         # "Qatar",
-        # "Saudi Arabia",
+        "Saudi Arabia",
         # "United Arab Emirates",
         # "Oman",
         # "United Kingdom",
@@ -246,13 +353,6 @@ if __name__ == "__main__":
     # )
     # step_2_fill_gaps()
     # step_4_seasonality(["Backward", "Forward"])
-    # step_2_fill_gaps()
     # step_3_averages(countries)
-    #
-    # removing_bad_Sales()
-    # # #
-    # step_2_fill_gaps()
-    # step_4_seasonality(["Backward", "Forward"])
-    # step_3_averages(countries)
-    # step_4_seasonality(["Forward", "Backward"])
-    prophet_forcast(Kuwait)
+    # prophet_forcast(Kuwait)
+    last_step()
