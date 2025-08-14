@@ -1,59 +1,39 @@
+import logging
 import warnings
-from typing import List, Literal
+from typing import List, Literal, Optional
 
-from numpy import mat
+import hydra
 
+from config import Config
 from db.helpers import new_sales_collection
+from db.queries import derived_fields, exclude_irrelevant_sales, fix_negative_sales
 from fill_with_averages import Params, fill_sales_with_averages
-from helpers.sales import generate_all_sales_records as __generate_all_sales_records
+from helpers.fill_gaps import fill_gaps
 from helpers.seasonality_helper import fill
-from interpolate import fill_gaps, prophet_forcast
+from helpers.types import CountryList
+from interpolate import prophet_forcast
 from setup import setup_sales
 
 warnings.filterwarnings("ignore")
-from helpers.types import CountryList
 
-Kuwait = [
-    "ananas",
-    "BARTONE",
-    "BT by BARTONE",
-    "Caribou",
-    "GOOD DAY",
-    "Joe & The Juice",
-    "Pick",
-    "Starbucks",
-    "Starbucks Reserve",
-    "Starbucks Reserve Bar",
-    "The Coffee Bean & Tea Leaf",
-    "Mr. Holmes",
-    "Pret A Manager",
-]
-KSA = [
-    "ARCHI",
-    "Coffee Address",
-    "Half Million Coffee",
-    "Joe and the Juice",
-    "Pals",
-    "Pret A Manager",
-    "Section-B",
-    "Starbucks",
-    "Urth Caffe",
-    "ZED",
-]
+log = logging.getLogger(__name__)
 
 
-def step_1_setup(country: CountryList):
-    setup_sales(country)
-    __generate_all_sales_records(country, Kuwait)
-    for i in ["Level_2_Area", "Level_3_Area", "Brand"]:
-        new_sales_collection.update_many(
-            {i: {"$type": "number"}}, [{"$set": {i: {"$toString": f"${i}"}}}]
-        )
+def setup(
+    country: CountryList,
+    sales_start: int,
+    sales_end: Optional[int] = None,
+    brands: Optional[list[str]] = None,
+):
+    log.info("Started Setup")
+    setup_sales(country, sales_start, sales_end, brands)
+    log.info("Ended Setup")
 
 
-def step_2_fill_gaps():
-    print("step 2")
-    fill_gaps()
+def step_2_fill_gaps(sales_start: int, gap_size: int):
+    log.info("Started Fill Gaps")
+    fill_gaps(sales_start, gap_size)
+    log.info("Ended Fill Gaps")
 
 
 def fill_averages(
@@ -222,124 +202,45 @@ def removing_bad_Sales():
 
 
 def last_step():
-    new_sales_collection.update_many(
-        {"Location_Type": {"$in": ["Education", "Government"]}, "original": False},
-        [
-            {
-                "$set": {
-                    "Weekend_Delivery_Sales": 0,
-                    "Weekend_Store_Sales": 0,
-                    "Weekday_Delivery_Sales": 0,
-                }
-            }
-        ],
-    )
-    new_sales_collection.update_many(
-        {"original": False},
-        [
-            {
-                "$set": {
-                    "Weekday_Store_Sales": {
-                        "$toInt": {"$abs": {"$ifNull": ["$Weekday_Store_Sales", 0]}}
-                    },
-                    "Weekday_Delivery_Sales": {
-                        "$toInt": {"$abs": {"$ifNull": ["$Weekday_Delivery_Sales", 0]}}
-                    },
-                    "Weekend_Store_Sales": {
-                        "$toInt": {"$abs": {"$ifNull": ["$Weekend_Store_Sales", 0]}}
-                    },
-                    "Weekend_Delivery_Sales": {
-                        "$toInt": {"$abs": {"$ifNull": ["$Weekend_Delivery_Sales", 0]}}
-                    },
-                }
-            }
-        ],
-    )
-    new_sales_collection.update_many(
-        {"original": False},
-        [
-            {
-                "$set": {
-                    "Weekday_Total_Sales": {
-                        "$add": [
-                            {"$ifNull": ["$Weekday_Delivery_Sales", 0]},
-                            {"$ifNull": ["$Weekday_Store_Sales", 0]},
-                        ]
-                    },
-                    "Weekend_Total_Sales": {
-                        "$add": [
-                            {"$ifNull": ["$Weekend_Delivery_Sales", 0]},
-                            {"$ifNull": ["$Weekend_Store_Sales", 0]},
-                        ]
-                    },
-                    "Monthly_Store_Sales": {
-                        "$add": [
-                            {
-                                "$multiply": [
-                                    {"$ifNull": ["$Weekday_Store_Sales", 0]},
-                                    20,
-                                ]
-                            },
-                            {
-                                "$multiply": [
-                                    {"$ifNull": ["$Weekend_Store_Sales", 0]},
-                                    8,
-                                ]
-                            },
-                        ]
-                    },
-                    "Monthly_Delivery_Sales": {
-                        "$add": [
-                            {
-                                "$multiply": [
-                                    {"$ifNull": ["$Weekday_Delivery_Sales", 0]},
-                                    20,
-                                ]
-                            },
-                            {
-                                "$multiply": [
-                                    {"$ifNull": ["$Weekend_Delivery_Sales", 0]},
-                                    8,
-                                ]
-                            },
-                        ]
-                    },
-                    "Monthly_Sales": {
-                        "$add": [
-                            {"$ifNull": ["$Monthly_Store_Sales", 0]},
-                            {"$ifNull": ["$Monthly_Delivery_Sales", 0]},
-                        ]
-                    },
-                    "Delivery_%": {
-                        "$cond": [
-                            {"$gt": [{"$ifNull": ["$Monthly_Sales", 0]}, 0]},
-                            {
-                                "$divide": [
-                                    {"$ifNull": ["$Monthly_Delivery_Sales", 0]},
-                                    {"$ifNull": ["$Monthly_Sales", 0]},
-                                ]
-                            },
-                            None,
-                        ]
-                    },
-                }
-            }
-        ],
-    )
+    exclude_irrelevant_sales()
+    fix_negative_sales()
+    derived_fields()
 
 
-if __name__ == "__main__":
-    countries: CountryList = [
-        # "Kuwait",
-        # "Bahrain",
-        # "Qatar",
-        "Saudi Arabia",
-        # "United Arab Emirates",
-        # "Oman",
-        # "United Kingdom",
-    ]
-    # step_1_setup(countries)
-    # step_2_fill_gaps()
+Kuwait = [
+    "ananas",
+    "BARTONE",
+    "BT by BARTONE",
+    "Caribou",
+    "GOOD DAY",
+    "Joe & The Juice",
+    "Pick",
+    "Starbucks",
+    "Starbucks Reserve",
+    "Starbucks Reserve Bar",
+    "The Coffee Bean & Tea Leaf",
+    "Mr. Holmes",
+    "Pret A Manager",
+]
+
+
+@hydra.main(
+    config_path=".",
+    config_name="config",
+    version_base=None,
+)
+def main(config: Config):
+    countries = list(config.countries)
+    brands = config.brands
+    if brands:
+        brands = list(brands)
+    # setup(
+    #     countries,
+    #     config.sales_start,
+    #     config.sales_end,
+    #     brands,
+    # )
+    # step_2_fill_gaps(config.sales_start, 4)
     # fill_averages(
     #     countries,
     #     [
@@ -351,8 +252,13 @@ if __name__ == "__main__":
     #         ]
     #     ],
     # )
-    # step_2_fill_gaps()
-    # step_4_seasonality(["Backward", "Forward"])
-    # step_3_averages(countries)
-    # prophet_forcast(Kuwait)
-    last_step()
+    # step_2_fill_gaps(config.sales_start, 6)
+    step_4_seasonality(["Backward", "Forward"])
+    step_3_averages(countries)
+    # if brands:
+    #     prophet_forcast(brands)
+    # last_step()
+
+
+if __name__ == "__main__":
+    main()

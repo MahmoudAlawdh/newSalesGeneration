@@ -3,3 +3,8 @@
 *.bson
 *.csv
 *.xlsx
+*.log
+*.pyc
+outputs/*
+output/*
+__pycache__/*

@@ -1,17 +1,17 @@
 from calendar import weekday
 from typing import Any, Dict, Literal, Optional
 
+import numpy as np
 from pandas import isna
 from pymongo import UpdateOne
 
-from config import YEAR
 from db.helpers import gm_sales_collection as __gm_sales_collection
 from db.helpers import gm_stores_collection as __gm_stores_collection
 from db.helpers import new_sales_collection as __new_sales_collection
 from helpers.types import CountryList
 
 
-def gm_stores_find(country: CountryList, brand: Optional[list[str]] = None):
+def __gm_stores_find(country: CountryList, brand: Optional[list[str]] = None):
     pipeline: Dict[str, Any] = {"Level_1_Area": {"$in": country}}
     if brand:
         pipeline["Brand"] = {"$in": brand}
@@ -43,9 +43,7 @@ def new_sales_find(country: CountryList):
     return __new_sales_collection.find({"Level_1_Area": {"$in": country}})
 
 
-def new_sales_find_by_country_and_reference_full_id(
-    country: str, reference_full_id: str
-):
+def __new_sales_find_by_country_and_reference_full_id(reference_full_id: str):
     return __new_sales_collection.find(
         {
             "Reference_Full_ID": reference_full_id,
@@ -57,64 +55,65 @@ def new_sales_insert(records):
     return __new_sales_collection.insert_many(records, ordered=False)
 
 
-def new_sales_average_sale():
+# def new_sales_average_sale():
+#     return __new_sales_collection.aggregate(
+#         [
+#             {
+#                 "$match": {
+#                     "Monthly_Sales": {"$ne": None},
+#                     "Industry_Level_2": {"$ne": 0},
+#                     "Sales_Year": {"$gte": YEAR},
+#                 }
+#             },
+#             {
+#                 "$group": {
+#                     "_id": {
+#                         "area": "$Level_3_Area",
+#                         "industry": "$Industry_Level_2",
+#                         "month": "$Sales_Month",
+#                         "year": "$Sales_Year",
+#                         "location_Type": "$Location_Type",
+#                     },
+#                     "average_sales": {"$avg": "$Monthly_Sales"},
+#                 }
+#             },
+#             {
+#                 "$project": {
+#                     "_id": False,
+#                     "area": "$_id.area",
+#                     "industry": "$_id.industry",
+#                     "month": "$_id.month",
+#                     "year": "$_id.year",
+#                     "location_type": "$_id.location_Type",
+#                     "average_sales": True,
+#                 }
+#             },
+#         ]
+#     )
+
+
+def new_sales_refenrece_ids_with_sales_count(sales_start: int, gap_size):
     return __new_sales_collection.aggregate(
         [
             {
                 "$match": {
-                    "Monthly_Sales": {"$ne": None},
-                    "Industry_Level_2": {"$ne": 0},
-                    "Sales_Year": {"$gte": YEAR},
-                }
-            },
-            {
-                "$group": {
-                    "_id": {
-                        "area": "$Level_3_Area",
-                        "industry": "$Industry_Level_2",
-                        "month": "$Sales_Month",
-                        "year": "$Sales_Year",
-                        "location_Type": "$Location_Type",
-                    },
-                    "average_sales": {"$avg": "$Monthly_Sales"},
-                }
-            },
-            {
-                "$project": {
-                    "_id": False,
-                    "area": "$_id.area",
-                    "industry": "$_id.industry",
-                    "month": "$_id.month",
-                    "year": "$_id.year",
-                    "location_type": "$_id.location_Type",
-                    "average_sales": True,
-                }
-            },
-        ]
-    )
-
-
-def new_sales_refenrece_ids_with_sales_count():
-    return __new_sales_collection.aggregate(
-        [
-            {
-                "$match": {
-                    "Source": {"$ne": "Algorithm"},
                     "Monthly_Sales": {"$nin": [None, 0]},
-                    "Sales_Year": {"$gte": YEAR},
+                    "Sales_Year": {"$gte": sales_start},
                 }
             },
             {"$group": {"_id": "$Reference_Full_ID", "fieldN": {"$sum": 1}}},
-            {"$match": {"fieldN": {"$gte": 3}}},
+            {"$match": {"fieldN": {"$gte": 1, "$lte": gap_size}}},
             {"$sort": {"fieldN": -1}},
         ]
     )
 
 
 def safe_to_int(value):
+    if isna(value):  # catches np.nan, pd.NA, None, NaT
+        return None
     if value is None:
         return None
-    return round(value)
+    return int(value)
 
 
 def fix_record(
@@ -131,6 +130,7 @@ def fix_record(
     weekend_delivery_sales: None | float,
     reason: str,
 ):
+
     if (
         weekday_delivery_sales == None
         and weekday_store_sales == None
@@ -345,4 +345,121 @@ def new_sales_update_many_record(data: list[dict]):
             )
             for i in operations
         ]
+    )
+
+
+def exclude_irrelevant_sales():
+    __new_sales_collection.update_many(
+        {"Location_Type": {"$in": ["Education", "Government"]}, "original": False},
+        [
+            {
+                "$set": {
+                    "Weekend_Delivery_Sales": None,
+                    "Weekend_Store_Sales": None,
+                    "Weekday_Delivery_Sales": None,
+                }
+            }
+        ],
+    )
+
+
+def fix_negative_sales():
+    __new_sales_collection.update_many(
+        {"original": False},
+        [
+            {
+                "$set": {
+                    "Weekday_Store_Sales": {
+                        "$toInt": {"$abs": {"$ifNull": ["$Weekday_Store_Sales", None]}}
+                    },
+                    "Weekday_Delivery_Sales": {
+                        "$toInt": {
+                            "$abs": {"$ifNull": ["$Weekday_Delivery_Sales", None]}
+                        }
+                    },
+                    "Weekend_Store_Sales": {
+                        "$toInt": {"$abs": {"$ifNull": ["$Weekend_Store_Sales", None]}}
+                    },
+                    "Weekend_Delivery_Sales": {
+                        "$toInt": {
+                            "$abs": {"$ifNull": ["$Weekend_Delivery_Sales", None]}
+                        }
+                    },
+                }
+            }
+        ],
+    )
+
+
+def derived_fields():
+    __new_sales_collection.update_many(
+        {"original": False},
+        [
+            {
+                "$set": {
+                    "Weekday_Total_Sales": {
+                        "$add": [
+                            {"$ifNull": ["$Weekday_Delivery_Sales", 0]},
+                            {"$ifNull": ["$Weekday_Store_Sales", 0]},
+                        ]
+                    },
+                    "Weekend_Total_Sales": {
+                        "$add": [
+                            {"$ifNull": ["$Weekend_Delivery_Sales", 0]},
+                            {"$ifNull": ["$Weekend_Store_Sales", 0]},
+                        ]
+                    },
+                    "Monthly_Store_Sales": {
+                        "$add": [
+                            {
+                                "$multiply": [
+                                    {"$ifNull": ["$Weekday_Store_Sales", 0]},
+                                    20,
+                                ]
+                            },
+                            {
+                                "$multiply": [
+                                    {"$ifNull": ["$Weekend_Store_Sales", 0]},
+                                    8,
+                                ]
+                            },
+                        ]
+                    },
+                    "Monthly_Delivery_Sales": {
+                        "$add": [
+                            {
+                                "$multiply": [
+                                    {"$ifNull": ["$Weekday_Delivery_Sales", 0]},
+                                    20,
+                                ]
+                            },
+                            {
+                                "$multiply": [
+                                    {"$ifNull": ["$Weekend_Delivery_Sales", 0]},
+                                    8,
+                                ]
+                            },
+                        ]
+                    },
+                    "Monthly_Sales": {
+                        "$add": [
+                            {"$ifNull": ["$Monthly_Store_Sales", 0]},
+                            {"$ifNull": ["$Monthly_Delivery_Sales", 0]},
+                        ]
+                    },
+                    "Delivery_%": {
+                        "$cond": [
+                            {"$gt": [{"$ifNull": ["$Monthly_Sales", 0]}, 0]},
+                            {
+                                "$divide": [
+                                    {"$ifNull": ["$Monthly_Delivery_Sales", 0]},
+                                    {"$ifNull": ["$Monthly_Sales", 0]},
+                                ]
+                            },
+                            None,
+                        ]
+                    },
+                }
+            }
+        ],
     )
