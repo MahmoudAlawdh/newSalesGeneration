@@ -40,7 +40,9 @@ def new_sales_delete():
 def new_sales_find(country: CountryList):
     if country is None:
         return __new_sales_collection.find()
-    return __new_sales_collection.find({"Level_1_Area": {"$in": country}})
+    return __new_sales_collection.find(
+        {"Level_1_Area": {"$in": country}, "Monthly_Sales": {"$ne": None}}
+    )
 
 
 def __new_sales_find_by_country_and_reference_full_id(reference_full_id: str):
@@ -55,55 +57,87 @@ def new_sales_insert(records):
     return __new_sales_collection.insert_many(records, ordered=False)
 
 
-# def new_sales_average_sale():
-#     return __new_sales_collection.aggregate(
-#         [
-#             {
-#                 "$match": {
-#                     "Monthly_Sales": {"$ne": None},
-#                     "Industry_Level_2": {"$ne": 0},
-#                     "Sales_Year": {"$gte": YEAR},
-#                 }
-#             },
-#             {
-#                 "$group": {
-#                     "_id": {
-#                         "area": "$Level_3_Area",
-#                         "industry": "$Industry_Level_2",
-#                         "month": "$Sales_Month",
-#                         "year": "$Sales_Year",
-#                         "location_Type": "$Location_Type",
-#                     },
-#                     "average_sales": {"$avg": "$Monthly_Sales"},
-#                 }
-#             },
-#             {
-#                 "$project": {
-#                     "_id": False,
-#                     "area": "$_id.area",
-#                     "industry": "$_id.industry",
-#                     "month": "$_id.month",
-#                     "year": "$_id.year",
-#                     "location_type": "$_id.location_Type",
-#                     "average_sales": True,
-#                 }
-#             },
-#         ]
-#     )
-
-
-def new_sales_refenrece_ids_with_sales_count(sales_start: int, gap_size):
+def new_sales_refenrece_ids_with_sales_count(sales_start: int, gap_size: int):
     return __new_sales_collection.aggregate(
-        [
+        pipeline=[
             {
                 "$match": {
-                    "Monthly_Sales": {"$nin": [None, 0]},
                     "Sales_Year": {"$gte": sales_start},
+                    "Reference_Full_ID": {"$ne": None},
                 }
             },
-            {"$group": {"_id": "$Reference_Full_ID", "fieldN": {"$sum": 1}}},
-            {"$match": {"fieldN": {"$gte": 1, "$lte": gap_size}}},
-            {"$sort": {"fieldN": -1}},
+            {
+                "$set": {
+                    "period": {
+                        "$ifNull": [
+                            "$Sales_Period",
+                            {
+                                "$dateFromParts": {
+                                    "year": "$Sales_Year",
+                                    "month": {"$ifNull": ["$Sales_Month", 1]},
+                                    "day": 1,
+                                }
+                            },
+                        ]
+                    },
+                    "has_sales": {"$gt": [{"$ifNull": ["$Monthly_Sales", 0]}, 0]},
+                }
+            },
+            {"$sort": {"Reference_Full_ID": 1, "period": 1}},
+            {
+                "$setWindowFields": {
+                    "partitionBy": "$Reference_Full_ID",
+                    "sortBy": {"period": 1},
+                    "output": {
+                        "prev_has_sales": {
+                            "$shift": {"output": "$has_sales", "by": 1, "default": None}
+                        }
+                    },
+                }
+            },
+            {
+                "$set": {
+                    "run_boundary": {
+                        "$cond": [{"$ne": ["$has_sales", "$prev_has_sales"]}, 1, 0]
+                    }
+                }
+            },
+            {
+                "$setWindowFields": {
+                    "partitionBy": "$Reference_Full_ID",
+                    "sortBy": {"period": 1},
+                    "output": {
+                        "run_id": {
+                            "$sum": "$run_boundary",
+                            "window": {"documents": ["unbounded", "current"]},
+                        }
+                    },
+                }
+            },
+            {"$match": {"has_sales": False}},
+            {
+                "$group": {
+                    "_id": {"ref": "$Reference_Full_ID", "run": "$run_id"},
+                    "gap_length": {"$sum": 1},
+                    "gap_start": {"$min": "$period"},
+                    "gap_end": {"$max": "$period"},
+                }
+            },
+            {"$match": {"gap_length": {"$lte": gap_size}}},
+            {
+                "$group": {
+                    "_id": "$_id.ref",
+                    "gaps": {
+                        "$push": {
+                            "gap_length": "$gap_length",
+                            "gap_start": "$gap_start",
+                            "gap_end": "$gap_end",
+                        }
+                    },
+                }
+            },
+            {"$project": {"_id": 1, "Reference_Full_ID": "$_id", "gaps": 1}},
+            {"$sort": {"_id": 1}},
         ]
     )
 
@@ -392,74 +426,141 @@ def fix_negative_sales():
 
 
 def derived_fields():
-    __new_sales_collection.update_many(
+    return __new_sales_collection.update_many(
         {"original": False},
         [
+            # 1) Compute weekday/weekend totals and monthly (store/delivery) sales,
+            #    and convert 0 -> None using $let to avoid recomputing expressions.
             {
                 "$set": {
                     "Weekday_Total_Sales": {
-                        "$add": [
-                            {"$ifNull": ["$Weekday_Delivery_Sales", 0]},
-                            {"$ifNull": ["$Weekday_Store_Sales", 0]},
-                        ]
+                        "$let": {
+                            "vars": {
+                                "v": {
+                                    "$add": [
+                                        {"$ifNull": ["$Weekday_Delivery_Sales", 0]},
+                                        {"$ifNull": ["$Weekday_Store_Sales", 0]},
+                                    ]
+                                }
+                            },
+                            "in": {"$cond": [{"$eq": ["$$v", 0]}, None, "$$v"]},
+                        }
                     },
                     "Weekend_Total_Sales": {
-                        "$add": [
-                            {"$ifNull": ["$Weekend_Delivery_Sales", 0]},
-                            {"$ifNull": ["$Weekend_Store_Sales", 0]},
-                        ]
+                        "$let": {
+                            "vars": {
+                                "v": {
+                                    "$add": [
+                                        {"$ifNull": ["$Weekend_Delivery_Sales", 0]},
+                                        {"$ifNull": ["$Weekend_Store_Sales", 0]},
+                                    ]
+                                }
+                            },
+                            "in": {"$cond": [{"$eq": ["$$v", 0]}, None, "$$v"]},
+                        }
                     },
                     "Monthly_Store_Sales": {
-                        "$add": [
-                            {
-                                "$multiply": [
-                                    {"$ifNull": ["$Weekday_Store_Sales", 0]},
-                                    20,
-                                ]
+                        "$let": {
+                            "vars": {
+                                "v": {
+                                    "$add": [
+                                        {
+                                            "$multiply": [
+                                                {
+                                                    "$ifNull": [
+                                                        "$Weekday_Store_Sales",
+                                                        0,
+                                                    ]
+                                                },
+                                                20,
+                                            ]
+                                        },
+                                        {
+                                            "$multiply": [
+                                                {
+                                                    "$ifNull": [
+                                                        "$Weekend_Store_Sales",
+                                                        0,
+                                                    ]
+                                                },
+                                                8,
+                                            ]
+                                        },
+                                    ]
+                                }
                             },
-                            {
-                                "$multiply": [
-                                    {"$ifNull": ["$Weekend_Store_Sales", 0]},
-                                    8,
-                                ]
-                            },
-                        ]
+                            "in": {"$cond": [{"$eq": ["$$v", 0]}, None, "$$v"]},
+                        }
                     },
                     "Monthly_Delivery_Sales": {
-                        "$add": [
-                            {
-                                "$multiply": [
-                                    {"$ifNull": ["$Weekday_Delivery_Sales", 0]},
-                                    20,
-                                ]
+                        "$let": {
+                            "vars": {
+                                "v": {
+                                    "$add": [
+                                        {
+                                            "$multiply": [
+                                                {
+                                                    "$ifNull": [
+                                                        "$Weekday_Delivery_Sales",
+                                                        0,
+                                                    ]
+                                                },
+                                                20,
+                                            ]
+                                        },
+                                        {
+                                            "$multiply": [
+                                                {
+                                                    "$ifNull": [
+                                                        "$Weekend_Delivery_Sales",
+                                                        0,
+                                                    ]
+                                                },
+                                                8,
+                                            ]
+                                        },
+                                    ]
+                                }
                             },
-                            {
-                                "$multiply": [
-                                    {"$ifNull": ["$Weekend_Delivery_Sales", 0]},
-                                    8,
-                                ]
-                            },
-                        ]
+                            "in": {"$cond": [{"$eq": ["$$v", 0]}, None, "$$v"]},
+                        }
                     },
+                }
+            },
+            # 2) Compute Monthly_Sales from freshly computed monthly fields; 0 -> None
+            {
+                "$set": {
                     "Monthly_Sales": {
-                        "$add": [
-                            {"$ifNull": ["$Monthly_Store_Sales", 0]},
-                            {"$ifNull": ["$Monthly_Delivery_Sales", 0]},
-                        ]
-                    },
+                        "$let": {
+                            "vars": {
+                                "v": {
+                                    "$add": [
+                                        {"$ifNull": ["$Monthly_Store_Sales", 0]},
+                                        {"$ifNull": ["$Monthly_Delivery_Sales", 0]},
+                                    ]
+                                }
+                            },
+                            "in": {"$cond": [{"$eq": ["$$v", 0]}, None, "$$v"]},
+                        }
+                    }
+                }
+            },
+            # 3) Delivery_% based on updated Monthly_Sales; avoid divide-by-zero
+            {
+                "$set": {
                     "Delivery_%": {
                         "$cond": [
                             {"$gt": [{"$ifNull": ["$Monthly_Sales", 0]}, 0]},
                             {
                                 "$divide": [
                                     {"$ifNull": ["$Monthly_Delivery_Sales", 0]},
-                                    {"$ifNull": ["$Monthly_Sales", 0]},
+                                    "$Monthly_Sales",
                                 ]
                             },
                             None,
                         ]
-                    },
+                    }
                 }
-            }
+            },
         ],
     )

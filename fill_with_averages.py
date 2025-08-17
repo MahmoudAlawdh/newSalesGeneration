@@ -252,7 +252,7 @@ def __fill(
                             if store["Weekday_Delivery_Sales"]
                             else brand["Weekday_Delivery_Sales"]
                         ),
-                        weekday_store_sales,
+                        weekday_delivery_sales,
                         50,
                         0.1,
                     )
@@ -262,7 +262,7 @@ def __fill(
                             if store["Weekend_Store_Sales"]
                             else brand["Weekend_Store_Sales"]
                         ),
-                        weekday_store_sales,
+                        weekend_store_sales,
                         50,
                         0.1,
                     )
@@ -272,7 +272,7 @@ def __fill(
                             if store["Weekend_Delivery_Sales"]
                             else brand["Weekend_Delivery_Sales"]
                         ),
-                        weekday_store_sales,
+                        weekend_delivery_sales,
                         50,
                         0.1,
                     )

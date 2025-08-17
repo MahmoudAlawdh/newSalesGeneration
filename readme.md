@@ -1,3 +1,0 @@
-- for all sales, check the max generated and max actual, count them, to find anamolies
-- for all sales, check month to month change, if its more than 100% count them, to find anamolies
-- for all sales,check year to year sales, to check anamolies

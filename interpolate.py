@@ -31,15 +31,15 @@ def prophet_forcast(brands: list[str]):
             for j in keys:
                 print(first["Reference_Full_ID"], len(df))
                 model = prophet_forecast_model(df, j)
-                prediction = get_prediction(model, 6)
+                prediction = get_prediction(model, 36)
                 for idx, row in prediction.iterrows():
                     __new_sales_collection.update_one(
                         {
                             "Reference_Full_ID": first["Reference_Full_ID"],
                             "Sales_Month": row["ds"].month,
                             "Sales_Year": row["ds"].year,
-                            "Monthly_Sales": None,
-                            # f"{j}": None,
+                            f"{j}": None,
+                            "original": False,
                         },
                         {"$set": {f"{j}": round(row["yhat"])}},
                     )

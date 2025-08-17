@@ -5,20 +5,19 @@ import pandas as pd
 
 from db.helpers import new_sales_collection
 from db.queries import new_sales_update_many_record, new_sales_update_single_record
-from helpers.sales import derived_fields
 
-area_df = pd.read_excel("./seasonalities.xlsx", "area")
-industry_df = pd.read_excel("./seasonalities.xlsx", "industry")
-location_type_df = pd.read_excel("./seasonalities.xlsx", "location_type")
-product_focus_df = pd.read_excel("./seasonalities.xlsx", "product_focus")
+area_df = pd.read_excel("./input/seasonalities.xlsx", "area")
+industry_df = pd.read_excel("./input/seasonalities.xlsx", "industry")
+location_type_df = pd.read_excel("./input/seasonalities.xlsx", "location_type")
+product_focus_df = pd.read_excel("./input/seasonalities.xlsx", "product_focus")
 
-area_reverse_df = pd.read_excel("./seasonalities_reverse.xlsx", "area")
-industry_reverse_df = pd.read_excel("./seasonalities_reverse.xlsx", "industry")
+area_reverse_df = pd.read_excel("./input/seasonalities_reverse.xlsx", "area")
+industry_reverse_df = pd.read_excel("./input/seasonalities_reverse.xlsx", "industry")
 location_type_reverse_df = pd.read_excel(
-    "./seasonalities_reverse.xlsx", "location_type"
+    "./input/seasonalities_reverse.xlsx", "location_type"
 )
 product_focus_reverse_df = pd.read_excel(
-    "./seasonalities_reverse.xlsx", "product_focus"
+    "./input/seasonalities_reverse.xlsx", "product_focus"
 )
 
 

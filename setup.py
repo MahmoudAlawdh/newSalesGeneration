@@ -85,7 +85,7 @@ def __fill_sales_gaps(
     if len(records) > 0:
         count += len(records)
         __new_sales_insert(records)
-    log.info("Done Filling {count} Sales Gaps")
+    log.info(f"Done Filling {count} Sales Gaps")
 
 
 def __generate_all_sales_records(
@@ -129,7 +129,7 @@ def __generate_all_sales_records(
     if records:
         __new_sales_insert(records)
         records = []
-    log.info("Done Generating {count} sales Records")
+    log.info(f"Done Generating {count} sales Records")
 
 
 # ---

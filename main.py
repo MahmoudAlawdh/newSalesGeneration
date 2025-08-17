@@ -8,8 +8,9 @@ from config import Config
 from db.helpers import new_sales_collection
 from db.queries import derived_fields, exclude_irrelevant_sales, fix_negative_sales
 from fill_with_averages import Params, fill_sales_with_averages
-from helpers.fill_gaps import fill_gaps
+from helpers.fill_gaps import fill_gaps, fill_gaps_all_in_one
 from helpers.seasonality_helper import fill
+from helpers.statsforcast.forcast import forecast
 from helpers.types import CountryList
 from interpolate import prophet_forcast
 from setup import setup_sales
@@ -33,6 +34,7 @@ def setup(
 def step_2_fill_gaps(sales_start: int, gap_size: int):
     log.info("Started Fill Gaps")
     fill_gaps(sales_start, gap_size)
+    derived_fields()
     log.info("Ended Fill Gaps")
 
 
@@ -65,29 +67,29 @@ def fill_averages(
 def step_3_averages(country: CountryList):
     print("step 3")
     c: List[List[Params]] = [
-        # [
-        #     "Location_Type",
-        #     "Brand",
-        #     "Product_Focus",
-        #     "Industry_Level_2",
-        # ],
-        # [
-        #     "Location_Type",
-        #     "Industry_Level_2",
-        #     "Product_Focus",
-        # ],
-        # [
-        #     "Location_Type",
-        #     "Industry_Level_2",
-        # ],
-        # [
-        #     "Product_Focus",
-        #     "Industry_Level_2",
-        # ],
-        # ["Brand", "Level_1_Area"],
-        # ["Industry_Level_2", "Level_1_Area"],
-        # ["Product_Focus", "Level_1_Area"],
-        # ["Brand"],
+        [
+            "Location_Type",
+            "Brand",
+            "Product_Focus",
+            "Industry_Level_2",
+        ],
+        [
+            "Location_Type",
+            "Industry_Level_2",
+            "Product_Focus",
+        ],
+        [
+            "Location_Type",
+            "Industry_Level_2",
+        ],
+        [
+            "Product_Focus",
+            "Industry_Level_2",
+        ],
+        ["Brand", "Level_1_Area"],
+        ["Industry_Level_2", "Level_1_Area"],
+        ["Product_Focus", "Level_1_Area"],
+        ["Brand"],
         ["Industry_Level_2"],
         ["Product_Focus"],
         ["Location_Type"],
@@ -136,27 +138,7 @@ def step_4_seasonality(mode: list[Literal["Forward", "Backward"]]):
             )
 
 
-def delete_over_million_sales():
-    new_sales_collection.update_many(
-        {"Monthly_Sales": {"$gt": 500_000}, "original": False},
-        {
-            "$set": {
-                "Monthly_Sales": None,
-                "Monthly_Delivery_Sales": None,
-                "Monthly_Store_Sales": None,
-                "Weekday_Store_Sales": None,
-                "Weekday_Delivery_Sales": None,
-                "Weekday_Total_Sales": None,
-                "Weekend_Store_Sales": None,
-                "Weekend_Delivery_Sales": None,
-                "Weekend_Total_Sales": None,
-            }
-        },
-    )
-
-
 def removing_bad_Sales():
-    delete_over_million_sales()
     ids = new_sales_collection.aggregate([{"$group": {"_id": "$Reference_Full_ID"}}])
     index = 0
     for i in ids:
@@ -207,29 +189,38 @@ def last_step():
     derived_fields()
 
 
-Kuwait = [
-    "ananas",
-    "BARTONE",
-    "BT by BARTONE",
-    "Caribou",
-    "GOOD DAY",
-    "Joe & The Juice",
-    "Pick",
-    "Starbucks",
-    "Starbucks Reserve",
-    "Starbucks Reserve Bar",
-    "The Coffee Bean & Tea Leaf",
-    "Mr. Holmes",
-    "Pret A Manager",
-]
+def normal(config: Config):
+    countries = list(config.countries)
+    brands = config.brands
+    if brands:
+        brands = list(brands)
+    setup(
+        countries,
+        config.sales_start,
+        config.sales_end,
+        brands,
+    )
+    step_2_fill_gaps(config.sales_start, 400)
+    fill_averages(
+        countries,
+        [
+            [
+                "Location_Type",
+                "Brand",
+                "Product_Focus",
+                "Industry_Level_2",
+            ]
+        ],
+    )
+    step_2_fill_gaps(config.sales_start, 400)
+    step_4_seasonality(["Backward", "Forward"])
+    step_3_averages(countries)
+    if brands:
+        prophet_forcast(brands)
+    last_step()
 
 
-@hydra.main(
-    config_path=".",
-    config_name="config",
-    version_base=None,
-)
-def main(config: Config):
+def forecastt(config: Config):
     countries = list(config.countries)
     brands = config.brands
     if brands:
@@ -240,7 +231,7 @@ def main(config: Config):
     #     config.sales_end,
     #     brands,
     # )
-    # step_2_fill_gaps(config.sales_start, 4)
+    # step_2_fill_gaps(config.sales_start, 6)
     # fill_averages(
     #     countries,
     #     [
@@ -249,15 +240,39 @@ def main(config: Config):
     #             "Brand",
     #             "Product_Focus",
     #             "Industry_Level_2",
-    #         ]
+    #         ],
+    #         [
+    #             "Location_Type",
+    #             "Product_Focus",
+    #             "Industry_Level_2",
+    #         ],
     #     ],
     # )
-    # step_2_fill_gaps(config.sales_start, 6)
-    step_4_seasonality(["Backward", "Forward"])
-    step_3_averages(countries)
-    # if brands:
-    #     prophet_forcast(brands)
-    # last_step()
+
+    x = forecast(countries, h=24)
+    print(x.columns)
+    print(
+        x[
+            [
+                "unique_id",
+                "ds",
+                "AutoARIMA",
+                "y_hat_mean",
+                "Monthly_Store_Sales",
+                "Monthly_Delivery_Sales",
+            ]
+        ]
+    )
+    print(len(x))
+
+
+@hydra.main(
+    config_path=".",
+    config_name="config",
+    version_base=None,
+)
+def main(config: Config):
+    normal(config)
 
 
 if __name__ == "__main__":

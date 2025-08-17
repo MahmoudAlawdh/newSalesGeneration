@@ -1,35 +1,35 @@
 sales_start: 2016
 sales_end: 2025
 countries:
-  - Kuwait
+  # - Kuwait
   # - Bahrain
   # - Qatar
-  # - Saudi Arabia
+  - Saudi Arabia
   # - United Arab Emirates
   # - Oman
   # - United Kingdom
-# brands:
-#   - ARCHI
-#   - Coffee Address
-#   - Half Million Coffee
-#   - Joe and the Juice
-#   - Pals
-#   - Pret A Manager
-#   - Section-B
-#   - Starbucks
-#   - Urth Caffe
-#   - ZED
 brands:
-  - ananas
-  - BARTONE
-  - BT by BARTONE
-  - Caribou
-  - GOOD DAY
-  - Joe & The Juice
-  - Pick
-  - Starbucks
-  - Starbucks Reserve
-  - Starbucks Reserve Bar
-  - The Coffee Bean & Tea Leaf
-  - Mr. Holmes
+  - ARCHI
+  - Coffee Address
+  - Half Million Coffee
+  - Joe and the Juice
+  - Pals
   - Pret A Manager
+  - Section-B
+  - Starbucks
+  - Urth Caffe
+  - ZED
+# brands:
+#   - ananas
+#   - BARTONE
+#   - BT by BARTONE
+#   - Caribou
+#   - GOOD DAY
+#   - Joe & The Juice
+#   - Pick
+#   - Starbucks
+#   - Starbucks Reserve
+#   - Starbucks Reserve Bar
+#   - The Coffee Bean & Tea Leaf
+#   - Mr. Holmes
+#   - Pret A Manager
