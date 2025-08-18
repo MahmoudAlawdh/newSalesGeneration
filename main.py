@@ -6,9 +6,14 @@ import hydra
 
 from config import Config
 from db.helpers import new_sales_collection
-from db.queries import derived_fields, exclude_irrelevant_sales, fix_negative_sales
+from db.queries import (
+    delete_zero,
+    derived_fields,
+    exclude_irrelevant_sales,
+    fix_negative_sales,
+)
 from fill_with_averages import Params, fill_sales_with_averages
-from helpers.fill_gaps import fill_gaps, fill_gaps_all_in_one
+from helpers.fill_gaps import fill_gaps
 from helpers.seasonality_helper import fill
 from helpers.statsforcast.forcast import forecast
 from helpers.types import CountryList
@@ -34,7 +39,9 @@ def setup(
 def step_2_fill_gaps(sales_start: int, gap_size: int):
     log.info("Started Fill Gaps")
     fill_gaps(sales_start, gap_size)
-    derived_fields()
+    log.info("Started Derived_Fields")
+    # derived_fields()
+    log.info("Ended Derived_Fields")
     log.info("Ended Fill Gaps")
 
 
@@ -184,6 +191,7 @@ def removing_bad_Sales():
 
 
 def last_step():
+    removing_bad_Sales()
     exclude_irrelevant_sales()
     fix_negative_sales()
     derived_fields()
@@ -194,30 +202,30 @@ def normal(config: Config):
     brands = config.brands
     if brands:
         brands = list(brands)
-    setup(
-        countries,
-        config.sales_start,
-        config.sales_end,
-        brands,
-    )
+    # setup(
+    #     countries,
+    #     config.sales_start,
+    #     config.sales_end,
+    #     brands,
+    # )
     step_2_fill_gaps(config.sales_start, 400)
-    fill_averages(
-        countries,
-        [
-            [
-                "Location_Type",
-                "Brand",
-                "Product_Focus",
-                "Industry_Level_2",
-            ]
-        ],
-    )
-    step_2_fill_gaps(config.sales_start, 400)
-    step_4_seasonality(["Backward", "Forward"])
-    step_3_averages(countries)
-    if brands:
-        prophet_forcast(brands)
-    last_step()
+    # fill_averages(
+    #     countries,
+    #     [
+    #         [
+    #             "Location_Type",
+    #             "Brand",
+    #             "Product_Focus",
+    #             "Industry_Level_2",
+    #         ]
+    #     ],
+    # )
+    # step_2_fill_gaps(config.sales_start, 400)
+    # step_4_seasonality(["Backward", "Forward"])
+    # step_3_averages(countries)
+    # if brands:
+    #     prophet_forcast(brands)
+    # last_step()
 
 
 def forecastt(config: Config):

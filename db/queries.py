@@ -1,4 +1,5 @@
 from calendar import weekday
+from datetime import datetime
 from typing import Any, Dict, Literal, Optional
 
 import numpy as np
@@ -58,36 +59,39 @@ def new_sales_insert(records):
 
 
 def new_sales_refenrece_ids_with_sales_count(sales_start: int, gap_size: int):
+
     return __new_sales_collection.aggregate(
         pipeline=[
             {
                 "$match": {
-                    "Sales_Year": {"$gte": sales_start},
+                    "Sales_Period": {"$gte": datetime(sales_start, 1, 1)},
                     "Reference_Full_ID": {"$ne": None},
                 }
             },
+            # has_sales is True only if *all* fields are not null
             {
-                "$set": {
-                    "period": {
-                        "$ifNull": [
-                            "$Sales_Period",
+                "$addFields": {
+                    "has_sales": {
+                        "$cond": [
                             {
-                                "$dateFromParts": {
-                                    "year": "$Sales_Year",
-                                    "month": {"$ifNull": ["$Sales_Month", 1]},
-                                    "day": 1,
-                                }
+                                "$and": [
+                                    {"$ne": ["$Weekday_Store_Sales", None]},
+                                    {"$ne": ["$Weekday_Delivery_Sales", None]},
+                                    {"$ne": ["$Weekend_Store_Sales", None]},
+                                    {"$ne": ["$Weekend_Delivery_Sales", None]},
+                                ]
                             },
+                            True,
+                            False,
                         ]
-                    },
-                    "has_sales": {"$gt": [{"$ifNull": ["$Monthly_Sales", 0]}, 0]},
+                    }
                 }
             },
-            {"$sort": {"Reference_Full_ID": 1, "period": 1}},
+            {"$sort": {"Reference_Full_ID": 1, "Sales_Period": 1}},
             {
                 "$setWindowFields": {
                     "partitionBy": "$Reference_Full_ID",
-                    "sortBy": {"period": 1},
+                    "sortBy": {"Sales_Period": 1},
                     "output": {
                         "prev_has_sales": {
                             "$shift": {"output": "$has_sales", "by": 1, "default": None}
@@ -105,7 +109,7 @@ def new_sales_refenrece_ids_with_sales_count(sales_start: int, gap_size: int):
             {
                 "$setWindowFields": {
                     "partitionBy": "$Reference_Full_ID",
-                    "sortBy": {"period": 1},
+                    "sortBy": {"Sales_Period": 1},
                     "output": {
                         "run_id": {
                             "$sum": "$run_boundary",
@@ -119,11 +123,11 @@ def new_sales_refenrece_ids_with_sales_count(sales_start: int, gap_size: int):
                 "$group": {
                     "_id": {"ref": "$Reference_Full_ID", "run": "$run_id"},
                     "gap_length": {"$sum": 1},
-                    "gap_start": {"$min": "$period"},
-                    "gap_end": {"$max": "$period"},
+                    "gap_start": {"$min": "$Sales_Period"},
+                    "gap_end": {"$max": "$Sales_Period"},
                 }
             },
-            {"$match": {"gap_length": {"$lte": gap_size}}},
+            {"$match": {"gap_length": {"$lte": gap_size, "$gt": 1}}},
             {
                 "$group": {
                     "_id": "$_id.ref",
@@ -134,10 +138,18 @@ def new_sales_refenrece_ids_with_sales_count(sales_start: int, gap_size: int):
                             "gap_end": "$gap_end",
                         }
                     },
+                    "gap_count": {"$sum": 1},
                 }
             },
-            {"$project": {"_id": 1, "Reference_Full_ID": "$_id", "gaps": 1}},
-            {"$sort": {"_id": 1}},
+            {
+                "$project": {
+                    "_id": 1,
+                    "Reference_Full_ID": "$_id",
+                    "gap_count": 1,
+                    "gaps": 1,
+                }
+            },
+            {"$sort": {"Reference_Full_ID": 1}},
         ]
     )
 
@@ -562,5 +574,45 @@ def derived_fields():
                     }
                 }
             },
+        ],
+    )
+
+
+def delete_zero():
+    return __new_sales_collection.update_many(
+        {"original": False},
+        [
+            {
+                "$set": {
+                    "Weekday_Store_Sales": {
+                        "$cond": [
+                            {"$eq": ["$Weekday_Store_Sales", 0]},
+                            None,
+                            "$Weekday_Store_Sales",
+                        ]
+                    },
+                    "Weekday_Delivery_Sales": {
+                        "$cond": [
+                            {"$eq": ["$Weekday_Delivery_Sales", 0]},
+                            None,
+                            "$Weekday_Delivery_Sales",
+                        ]
+                    },
+                    "Weekend_Store_Sales": {
+                        "$cond": [
+                            {"$eq": ["$Weekend_Store_Sales", 0]},
+                            None,
+                            "$Weekend_Store_Sales",
+                        ]
+                    },
+                    "Weekend_Delivery_Sales": {
+                        "$cond": [
+                            {"$eq": ["$Weekend_Delivery_Sales", 0]},
+                            None,
+                            "$Weekend_Delivery_Sales",
+                        ]
+                    },
+                }
+            }
         ],
     )

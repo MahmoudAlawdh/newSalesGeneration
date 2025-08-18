@@ -10,6 +10,7 @@ from typing import Optional as __Optional
 from ducks import Dex as __Dex
 
 from db.helpers import new_sales_collection as __new_sales_collection
+from db.queries import delete_zero
 from db.queries import (
     new_sales_update_single_record as __new_sales_update_single_record,
 )
@@ -293,6 +294,7 @@ def __fill(
             except Exception as e:
                 print(e)
                 pass
+    delete_zero()
 
 
 def fill_sales_with_averages(
